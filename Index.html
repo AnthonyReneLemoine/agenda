@@ -1085,6 +1085,16 @@
           );
       }
 
+      function formatEventTimeRange(event) {
+        if (!event?.start || !event?.end) return '';
+        const format = (date) =>
+          date.toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        return `${format(event.start)}–${format(event.end)}`;
+      }
+
       // ==================== INITIALISATION ====================
       
       document.addEventListener('DOMContentLoaded', function() {
@@ -1121,11 +1131,15 @@
           eventContent: function(arg) {
             const desc = arg.event.extendedProps.description || '';
             const truncatedDesc = desc.length > 40 ? desc.substring(0, 40) + '...' : desc;
+            const timeRange = formatEventTimeRange(arg.event);
             
             return {
               html: `
                 <div class="p-1 overflow-hidden text-xs">
-                  <div class="font-semibold truncate">${arg.event.title}</div>
+                  <div class="font-semibold truncate">
+                    ${arg.event.title}
+                    ${timeRange ? `<span class="font-normal opacity-80">(${timeRange})</span>` : ''}
+                  </div>
                   ${truncatedDesc ? `<div class="opacity-80 truncate mt-0.5">${truncatedDesc}</div>` : ''}
                 </div>
               `
