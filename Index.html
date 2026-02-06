@@ -499,6 +499,9 @@
             🗑️ Supprimer
           </button>
           <div class="flex gap-3 ml-auto">
+            <button id="btn-duplicate" onclick="duplicateFromModal()" class="px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition hidden">
+              📄 Dupliquer
+            </button>
             <button onclick="closeModal()" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition">
               Annuler
             </button>
@@ -587,6 +590,7 @@
         const modal = document.getElementById('eventModal');
         const select = document.getElementById('m-calendar');
         const btnDelete = document.getElementById('btn-delete');
+        const btnDuplicate = document.getElementById('btn-duplicate');
         
         // Remplir le select des calendriers
         select.innerHTML = activeCalendars
@@ -650,6 +654,7 @@
           
           select.value = evt.extendedProps.calendarId;
           btnDelete.classList.remove('hidden');
+          btnDuplicate.classList.remove('hidden');
           
           // Récurrence non modifiable en édition (afficher info)
           document.getElementById('m-recurrence').disabled = true;
@@ -673,6 +678,7 @@
                                || activeCalendars[0];
           select.value = hermineCalendar?.id || activeCalendars[0]?.id;
           btnDelete.classList.add('hidden');
+          btnDuplicate.classList.add('hidden');
           
           document.getElementById('m-recurrence').disabled = false;
         }
@@ -698,13 +704,14 @@
         document.getElementById('m-recurrence').disabled = false;
         document.getElementById('row-date-end').style.display = 'none';
         document.getElementById('recurrence-until').style.display = 'none';
+        document.getElementById('btn-duplicate').disabled = false;
       }
 
       function closeModal() {
         document.getElementById('eventModal').style.display = 'none';
       }
 
-      function saveFromModal() {
+      function getModalEventData({ allowRecurrence }) {
         const eventId = document.getElementById('m-event-id').value;
         const oldCalId = document.getElementById('m-old-cal-id').value;
         const newCalId = document.getElementById('m-calendar').value;
@@ -714,47 +721,37 @@
         
         const title = document.getElementById('m-title').value.trim();
         if (!title) {
-          showToast('Veuillez saisir un titre', 'warning');
-          document.getElementById('m-title').focus();
-          return;
+          return { error: 'Veuillez saisir un titre', focusId: 'm-title' };
         }
         
         const dateStartVal = document.getElementById('m-date-start').value;
         if (!dateStartVal) {
-          showToast('Veuillez saisir une date', 'warning');
-          return;
+          return { error: 'Veuillez saisir une date' };
         }
         
         const timeStartVal = document.getElementById('m-time-start').value;
         const timeEndVal = document.getElementById('m-time-end').value;
         
         if (!isAllDay && (!timeStartVal || !timeEndVal)) {
-          showToast('Veuillez saisir les heures', 'warning');
-          return;
+          return { error: 'Veuillez saisir les heures' };
         }
         
-        // Pour événements non multi-jours, vérifier que fin > début
         if (!isAllDay && !isMultiDay && timeStartVal >= timeEndVal) {
-          showToast('L\'heure de fin doit être après le début', 'warning');
-          return;
+          return { error: 'L\'heure de fin doit être après le début' };
         }
         
         if (!newCalId) {
-          showToast('Veuillez sélectionner un calendrier', 'warning');
-          return;
+          return { error: 'Veuillez sélectionner un calendrier' };
         }
         
-        // Construire les données
         let dateEndVal = dateStartVal;
         if (isMultiDay) {
           dateEndVal = document.getElementById('m-date-end').value;
           if (!dateEndVal) {
-            showToast('Veuillez saisir la date de fin', 'warning');
-            return;
+            return { error: 'Veuillez saisir la date de fin' };
           }
           if (dateEndVal < dateStartVal) {
-            showToast('La date de fin doit être après le début', 'warning');
-            return;
+            return { error: 'La date de fin doit être après le début' };
           }
         }
         
@@ -779,19 +776,36 @@
           };
         }
         
-        // Récurrence (seulement pour nouveaux événements)
-        if (!eventId && recurrence !== 'none') {
+        if (allowRecurrence && !eventId && recurrence !== 'none') {
           data.recurrence = recurrence;
           data.recurrenceEnd = document.getElementById('m-recurrence-end').value;
           if (!data.recurrenceEnd) {
-            showToast('Veuillez saisir la date de fin de récurrence', 'warning');
-            return;
+            return { error: 'Veuillez saisir la date de fin de récurrence' };
           }
           if (data.recurrenceEnd < dateStartVal) {
-            showToast('La date de fin de récurrence doit être après le début', 'warning');
-            return;
+            return { error: 'La date de fin de récurrence doit être après le début' };
           }
         }
+        
+        return {
+          data,
+          eventId,
+          oldCalId,
+          newCalId
+        };
+      }
+
+      function saveFromModal() {
+        const payload = getModalEventData({ allowRecurrence: true });
+        if (payload.error) {
+          showToast(payload.error, 'warning');
+          if (payload.focusId) {
+            document.getElementById(payload.focusId).focus();
+          }
+          return;
+        }
+        
+        const { data, eventId, oldCalId, newCalId } = payload;
         
         updateStatus('syncing', 'Enregistrement...');
         document.getElementById('btn-save').disabled = true;
@@ -826,6 +840,42 @@
             .withFailureHandler(errorHandler)
             .addEventToCalendar(newCalId, data);
         }
+      }
+
+      function duplicateFromModal() {
+        const payload = getModalEventData({ allowRecurrence: false });
+        if (payload.error) {
+          showToast(payload.error, 'warning');
+          if (payload.focusId) {
+            document.getElementById(payload.focusId).focus();
+          }
+          return;
+        }
+        
+        const { data, newCalId } = payload;
+        const duplicateBtn = document.getElementById('btn-duplicate');
+        
+        updateStatus('syncing', 'Duplication...');
+        duplicateBtn.disabled = true;
+        
+        const successHandler = (result) => {
+          calendar.refetchEvents();
+          updateStatus('ok');
+          closeModal();
+          showToast('Événement dupliqué', 'success');
+          duplicateBtn.disabled = false;
+        };
+        
+        const errorHandler = (err) => {
+          updateStatus('error');
+          showToast('Erreur: ' + (err?.message || err), 'error');
+          duplicateBtn.disabled = false;
+        };
+        
+        google.script.run
+          .withSuccessHandler(successHandler)
+          .withFailureHandler(errorHandler)
+          .addEventToCalendar(newCalId, data);
       }
 
       function deleteFromModal() {
