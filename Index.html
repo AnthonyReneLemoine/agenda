@@ -1136,10 +1136,8 @@
             return {
               html: `
                 <div class="p-1 overflow-hidden text-xs">
-                  <div class="font-semibold truncate">
-                    ${arg.event.title}
-                    ${timeRange ? `<span class="font-normal opacity-80">(${timeRange})</span>` : ''}
-                  </div>
+                  <div class="font-semibold truncate">${arg.event.title}</div>
+                  ${timeRange ? `<div class="font-normal opacity-80">${timeRange}</div>` : ''}
                   ${truncatedDesc ? `<div class="opacity-80 truncate mt-0.5">${truncatedDesc}</div>` : ''}
                 </div>
               `
