@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'%3E%3Cpath d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z'/%3E%3Crect x='7' y='12' width='2' height='2'/%3E%3Crect x='11' y='12' width='2' height='2'/%3E%3Crect x='15' y='12' width='2' height='2'/%3E%3Crect x='7' y='16' width='2' height='2'/%3E%3Crect x='11' y='16' width='2' height='2'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+      :root {
+        --header-bg: #1e293b;
+        --sidebar-bg: #f8fafc;
+        --border-color: #e2e8f0;
+      }
+      
+      body, html { 
+        height: 100%; 
+        margin: 0; 
+        overflow: hidden; 
+      }
+      
+      .app-wrapper { 
+        display: flex; 
+        flex-direction: column; 
+        height: 100vh; 
+      }
+      
+      .header-bandeau { 
+        background: var(--header-bg); 
+        color: white; 
+        padding: 10px 20px; 
+        z-index: 1000; 
+        flex-shrink: 0; 
+      }
+      
+      .main-content { 
+        display: flex; 
+        flex: 1; 
+        overflow: hidden; 
+      }
+      
+      .sidebar { 
+        width: 280px; 
+        border-right: 1px solid var(--border-color); 
+        background: var(--sidebar-bg); 
+        padding: 15px; 
+        overflow-y: auto; 
+        flex-shrink: 0;
+        transition: margin-left 0.3s ease, opacity 0.3s ease;
+      }
+      
+      .sidebar.hidden {
+        margin-left: -280px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      #calendar-container { 
+        flex: 1; 
+        overflow-x: auto; 
+        overflow-y: auto; 
+        background: #ffffff;
+        transition: margin-left 0.3s ease;
+      }
+      
+      #calendar { 
+        min-width: 300%; 
+        height: 100%; 
+      }
+      
+      /* Mini-calendrier */
+      #mini-calendar {
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      
+      #mini-calendar .fc {
+        font-size: 11px;
+      }
+      
+      #mini-calendar .fc-toolbar {
+        margin-bottom: 8px !important;
+      }
+      
+      #mini-calendar .fc-toolbar-title {
+        font-size: 14px !important;
+        font-weight: 600;
+      }
+      
+      #mini-calendar .fc-button {
+        padding: 2px 6px !important;
+        font-size: 11px !important;
+      }
+      
+      #mini-calendar .fc-daygrid-day {
+        cursor: pointer;
+      }
+      
+      #mini-calendar .fc-daygrid-day:hover {
+        background: #eff6ff;
+      }
+      
+      #mini-calendar .fc-daygrid-day-number {
+        padding: 2px 4px !important;
+        font-size: 11px;
+      }
+      
+      #mini-calendar .fc-day-today {
+        background: rgba(59, 130, 246, 0.1) !important;
+      }
+      
+      #mini-calendar .fc-day-today .fc-daygrid-day-number {
+        background: #3b82f6;
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      #mini-calendar .fc-col-header-cell {
+        font-size: 10px;
+        font-weight: 500;
+        color: #64748b;
+        padding: 4px 0 !important;
+      }
+      
+      #mini-calendar .fc-daygrid-day-events {
+        display: none; /* Masquer les événements dans le mini-cal */
+      }
+      
+      #mini-calendar .fc-selected-day {
+        background: #dbeafe !important;
+      }
+      
+      /* Boutons de vue */
+      .view-btn { 
+        background: #334155; 
+        color: #94a3b8; 
+        padding: 6px 12px; 
+        font-size: 12px; 
+        font-weight: 600; 
+        transition: all 0.2s; 
+        border-right: 1px solid #1e293b; 
+      }
+      
+      .view-btn:first-child { 
+        border-radius: 8px 0 0 8px; 
+      }
+      
+      .view-btn:last-child { 
+        border-radius: 0 8px 8px 0; 
+        border-right: none; 
+      }
+      
+      .view-btn:hover { 
+        background: #475569; 
+        color: white; 
+      }
+      
+      .view-btn.active { 
+        background: #0f172a; 
+        color: white; 
+      }
+      
+      /* Calendrier */
+      .fc-day-today { 
+        background: rgba(25, 118, 210, 0.04) !important; 
+      }
+      
+      .fc-timegrid-now-indicator-line { 
+        border-color: #ef4444 !important; 
+        border-width: 2px !important; 
+      }
+      
+      .fc-event {
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      
+      /* Modal */
+      #eventModal { 
+        display: none; 
+        position: fixed; 
+        z-index: 2000; 
+        left: 0; 
+        top: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0, 0, 0, 0.3); 
+        backdrop-filter: blur(2px);
+      }
+      
+      .modal-content { 
+        background: white; 
+        margin: 8% auto; 
+        padding: 24px; 
+        border-radius: 12px; 
+        width: 480px; 
+        max-width: 90vw;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); 
+        animation: modalIn 0.2s ease-out;
+      }
+      
+      @keyframes modalIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .input-title { 
+        border: none;
+        border-bottom: 2px solid #e5e7eb; 
+        width: 100%; 
+        padding: 10px 0; 
+        font-size: 22px; 
+        font-weight: 500;
+        outline: none; 
+        margin-bottom: 20px; 
+        transition: border-color 0.2s;
+      }
+      
+      .input-title:focus {
+        border-color: #3b82f6;
+      }
+      
+      .icon-row { 
+        display: flex; 
+        align-items: center; 
+        gap: 16px; 
+        margin-top: 16px; 
+        color: #6b7280; 
+        font-size: 14px; 
+      }
+      
+      .icon-row .icon {
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      
+      .input-field { 
+        border: none; 
+        border-bottom: 1px solid transparent; 
+        outline: none; 
+        padding: 6px 4px; 
+        border-radius: 4px; 
+        transition: all 0.2s; 
+        width: 100%;
+        font-size: 14px;
+      }
+      
+      .input-field:hover {
+        background: #f3f4f6;
+      }
+      
+      .input-field:focus {
+        background: #eff6ff;
+        border-bottom-color: #3b82f6;
+      }
+      
+      /* Indicateur de statut */
+      .status-dot { 
+        width: 10px; 
+        height: 10px; 
+        border-radius: 50%; 
+        display: inline-block; 
+        margin-right: 6px; 
+      }
+      
+      .dot-syncing { 
+        background-color: #fbbf24; 
+        animation: pulse 1s infinite; 
+      }
+      
+      .dot-ok { 
+        background-color: #10b981; 
+      }
+      
+      .dot-error {
+        background-color: #ef4444;
+      }
+      
+      @keyframes pulse { 
+        0%, 100% { opacity: 1; } 
+        50% { opacity: 0.4; } 
+      }
+      
+      /* Checkbox personnalisée */
+      .calendar-checkbox {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #d1d5db;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .calendar-checkbox:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+      }
+      
+      /* Toasts */
+      .toast {
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: toastIn 0.3s ease-out;
+        max-width: 350px;
+      }
+      
+      .toast-success { background: #10b981; }
+      .toast-error { background: #ef4444; }
+      .toast-warning { background: #f59e0b; }
+      .toast-info { background: #3b82f6; }
+      
+      .toast-exit {
+        animation: toastOut 0.3s ease-in forwards;
+      }
+      
+      @keyframes toastIn {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      
+      @keyframes toastOut {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(100%); }
+      }
+    </style>
+  </head>
+  
+  <body class="font-sans text-gray-700">
+    <div class="app-wrapper">
+      <!-- Header -->
+      <header class="header-bandeau flex justify-between items-center">
+        <div class="flex items-center gap-4">
+          <button onclick="toggleSidebar()" class="text-white hover:bg-slate-700 p-2 rounded-lg transition" title="Afficher/masquer les agendas">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span class="text-xl font-bold tracking-tight">Agenda</span>
+          
+          <button onclick="openModal()" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-bold shadow hover:bg-blue-700 transition ml-2">
+            + Créer
+          </button>
+          
+          <div class="flex ml-2">
+            <button onclick="changeView('dayGridMonth', this)" class="view-btn">Mois</button>
+            <button onclick="changeView('slidingView', this)" class="view-btn active">21 jours</button>
+            <button onclick="changeView('timeGridDay', this)" class="view-btn">Jour</button>
+          </div>
+          
+          <!-- Navigation prev/next/today -->
+          <div class="flex items-center gap-1 ml-2">
+            <button onclick="calendar.prev()" class="bg-slate-700 text-white p-1.5 rounded-lg hover:bg-slate-600 transition" title="Précédent">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button onclick="calendar.today()" class="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-600">
+              Aujourd'hui
+            </button>
+            <button onclick="calendar.next()" class="bg-slate-700 text-white p-1.5 rounded-lg hover:bg-slate-600 transition" title="Suivant">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          
+          <input type="text" id="eventSearch" onkeyup="searchEvent()" placeholder="Rechercher..." 
+                 class="bg-slate-700 text-white text-sm px-4 py-1.5 rounded-lg border-none w-44 outline-none placeholder-slate-400 focus:ring-2 focus:ring-blue-500 ml-2">
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <button onclick="resetAgendas()" class="text-xs text-slate-400 hover:text-white underline">
+            Vues par défaut
+          </button>
+          <div class="flex items-center bg-slate-700 px-3 py-1 rounded-full text-xs">
+            <span id="sync-dot" class="status-dot dot-ok"></span>
+            <span id="sync-text">Système OK</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Contenu principal -->
+      <div class="main-content">
+        <!-- Sidebar escamotable -->
+        <aside id="sidebar" class="sidebar">
+          <!-- Mini-calendrier -->
+          <div id="mini-calendar" class="mb-4"></div>
+          
+          <h2 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest text-center">Agendas</h2>
+          <ul id="calendar-list" class="space-y-2"></ul>
+        </aside>
+        
+        <!-- Calendrier -->
+        <div id="calendar-container">
+          <div id="calendar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Container pour les toasts -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[3000] flex flex-col gap-2"></div>
+
+    <!-- Modal événement -->
+    <div id="eventModal" onclick="if(event.target === this) closeModal()">
+      <div class="modal-content relative">
+        <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl" aria-label="Fermer">
+          ✕
+        </button>
+        
+        <input type="text" id="m-title" placeholder="Ajouter un titre" class="input-title" autocomplete="off">
+        
+        <input type="hidden" id="m-event-id">
+        <input type="hidden" id="m-old-cal-id">
+        
+        <!-- Date et heures de début -->
+        <div class="icon-row">
+          <span class="icon">🕐</span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input type="date" id="m-date-start" class="input-field" style="width: auto;">
+            <select id="m-time-start" class="input-field" style="width: 95px;"></select>
+            <span class="text-gray-400">—</span>
+            <select id="m-time-end" class="input-field" style="width: 95px;"></select>
+          </div>
+        </div>
+        
+        <!-- Date de fin (pour événements multi-jours) -->
+        <div class="icon-row" id="row-date-end" style="display: none;">
+          <span class="icon">🏁</span>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Jusqu'au</span>
+            <input type="date" id="m-date-end" class="input-field" style="width: auto;">
+          </div>
+        </div>
+        
+        <!-- Options : toute la journée + plusieurs jours -->
+        <div class="icon-row">
+          <span class="icon"></span>
+          <div class="flex items-center gap-6">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="m-allday" onchange="toggleAllDay(this.checked)" class="calendar-checkbox">
+              <span class="text-sm text-gray-600">Toute la journée</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="m-multiday" onchange="toggleMultiDay(this.checked)" class="calendar-checkbox">
+              <span class="text-sm text-gray-600">Plusieurs jours</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Récurrence -->
+        <div class="icon-row">
+          <span class="icon">🔄</span>
+          <select id="m-recurrence" class="input-field cursor-pointer" style="width: auto;">
+            <option value="none">Ne pas répéter</option>
+            <option value="daily">Tous les jours</option>
+            <option value="weekly">Toutes les semaines</option>
+            <option value="biweekly">Toutes les 2 semaines</option>
+            <option value="monthly">Tous les mois</option>
+          </select>
+          <div id="recurrence-until" class="flex items-center gap-2" style="display: none;">
+            <span class="text-sm text-gray-500">jusqu'au</span>
+            <input type="date" id="m-recurrence-end" class="input-field" style="width: auto;">
+          </div>
+        </div>
+        
+        <!-- Calendrier -->
+        <div class="icon-row">
+          <span class="icon">📅</span>
+          <select id="m-calendar" class="input-field cursor-pointer font-medium"></select>
+        </div>
+        
+        <!-- Description -->
+        <div class="icon-row items-start">
+          <span class="icon mt-1">📝</span>
+          <textarea id="m-desc" placeholder="Ajouter une description..." 
+                    class="input-field h-20 resize-none" spellcheck="false"></textarea>
+        </div>
+        
+        <!-- Boutons -->
+        <div class="flex justify-between items-center mt-6 pt-4 border-t">
+          <button id="btn-delete" onclick="deleteFromModal()" class="text-red-500 hover:text-red-700 text-sm font-semibold hidden">
+            🗑️ Supprimer
+          </button>
+          <div class="flex gap-3 ml-auto">
+            <button onclick="closeModal()" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              Annuler
+            </button>
+            <button onclick="saveFromModal()" id="btn-save" class="px-6 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Variables globales
+      let calendar;
+      let miniCalendar;
+      let activeCalendars = [];
+      let debounceTimer;
+      let sidebarVisible = true;
+
+      // ==================== SIDEBAR ====================
+      
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebarVisible = !sidebarVisible;
+        
+        if (sidebarVisible) {
+          sidebar.classList.remove('hidden');
+        } else {
+          sidebar.classList.add('hidden');
+        }
+        
+        // Redimensionner les calendriers après la transition
+        setTimeout(() => {
+          if (calendar) {
+            calendar.updateSize();
+          }
+          if (sidebarVisible && miniCalendar) {
+            miniCalendar.updateSize();
+          }
+        }, 350);
+      }
+
+      // ==================== TOASTS ====================
+      
+      function showToast(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        const icons = {
+          success: '✓',
+          error: '✕',
+          warning: '⚠',
+          info: 'ℹ'
+        };
+        
+        toast.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.classList.add('toast-exit');
+          setTimeout(() => toast.remove(), 300);
+        }, duration);
+      }
+
+      // ==================== GESTION DU STATUT ====================
+      
+      function updateStatus(status, message) {
+        const dot = document.getElementById('sync-dot');
+        const text = document.getElementById('sync-text');
+        
+        const statusConfig = {
+          syncing: { class: 'dot-syncing', text: message || 'Synchronisation...' },
+          ok: { class: 'dot-ok', text: message || 'Système OK' },
+          error: { class: 'dot-error', text: message || 'Erreur' }
+        };
+        
+        const config = statusConfig[status] || statusConfig.ok;
+        dot.className = 'status-dot ' + config.class;
+        text.textContent = config.text;
+      }
+
+      // ==================== GESTION DU MODAL ====================
+      
+      function openModal(info = null, isEdit = false) {
+        const modal = document.getElementById('eventModal');
+        const select = document.getElementById('m-calendar');
+        const btnDelete = document.getElementById('btn-delete');
+        
+        // Remplir le select des calendriers
+        select.innerHTML = activeCalendars
+          .map(c => `<option value="${c.id}">${c.name}</option>`)
+          .join('');
+        
+        // Réinitialiser les champs
+        resetModalFields();
+        
+        if (isEdit && info?.event) {
+          // Mode édition
+          const evt = info.event;
+          const isAllDay = evt.allDay;
+          const startDate = evt.start;
+          const endDate = evt.end;
+          
+          document.getElementById('m-title').value = evt.title;
+          document.getElementById('m-desc').value = evt.extendedProps.description || '';
+          document.getElementById('m-event-id').value = evt.id;
+          document.getElementById('m-old-cal-id').value = evt.extendedProps.calendarId;
+          document.getElementById('m-date-start').value = formatDate(startDate);
+          
+          // Toujours initialiser m-date-end avec la date de début par défaut
+          document.getElementById('m-date-end').value = formatDate(startDate);
+          
+          // Vérifier si multi-jours
+          const isMultiDay = endDate && formatDate(startDate) !== formatDate(endDate);
+          
+          if (isAllDay) {
+            document.getElementById('m-time-start').value = '00:00';
+            document.getElementById('m-time-end').value = '23:45';
+            document.getElementById('m-allday').checked = true;
+            document.getElementById('m-time-start').disabled = true;
+            document.getElementById('m-time-end').disabled = true;
+            
+            if (isMultiDay) {
+              // Pour allDay multi-jours, la date de fin est exclusive dans FullCalendar
+              const actualEndDate = new Date(endDate);
+              actualEndDate.setDate(actualEndDate.getDate() - 1);
+              document.getElementById('m-date-end').value = formatDate(actualEndDate);
+              document.getElementById('m-multiday').checked = true;
+              document.getElementById('row-date-end').style.display = 'flex';
+            }
+          } else {
+            document.getElementById('m-time-start').value = formatTime(startDate);
+            if (endDate) {
+              document.getElementById('m-time-end').value = formatTime(endDate);
+              if (isMultiDay) {
+                document.getElementById('m-date-end').value = formatDate(endDate);
+                document.getElementById('m-multiday').checked = true;
+                document.getElementById('row-date-end').style.display = 'flex';
+              }
+            } else {
+              const endTime = new Date(startDate.getTime() + 60 * 60 * 1000);
+              document.getElementById('m-time-end').value = formatTime(endTime);
+            }
+            document.getElementById('m-allday').checked = false;
+            document.getElementById('m-time-start').disabled = false;
+            document.getElementById('m-time-end').disabled = false;
+          }
+          
+          select.value = evt.extendedProps.calendarId;
+          btnDelete.classList.remove('hidden');
+          
+          // Récurrence non modifiable en édition (afficher info)
+          document.getElementById('m-recurrence').disabled = true;
+          
+        } else {
+          // Mode création
+          const now = info?.start ? new Date(info.start) : new Date();
+          document.getElementById('m-date-start').value = formatDate(now);
+          document.getElementById('m-date-end').value = formatDate(now); // Même date par défaut
+          document.getElementById('m-time-start').value = info?.start ? formatTime(now) : '14:00';
+          document.getElementById('m-time-end').value = info?.end ? formatTime(new Date(info.end)) : '15:00';
+          
+          // Date de fin par défaut = date de début + 3 mois pour récurrence
+          const defaultRecurrenceEnd = new Date(now);
+          defaultRecurrenceEnd.setMonth(defaultRecurrenceEnd.getMonth() + 3);
+          document.getElementById('m-recurrence-end').value = formatDate(defaultRecurrenceEnd);
+          
+          // Sélectionner "Hermine" par défaut (exact, pas "SA LHermine" ou similaire)
+          const hermineCalendar = activeCalendars.find(c => c.name.toLowerCase() === 'hermine') 
+                               || activeCalendars.find(c => c.name.toLowerCase().startsWith('hermine'))
+                               || activeCalendars[0];
+          select.value = hermineCalendar?.id || activeCalendars[0]?.id;
+          btnDelete.classList.add('hidden');
+          
+          document.getElementById('m-recurrence').disabled = false;
+        }
+        
+        modal.style.display = 'block';
+        document.getElementById('m-title').focus();
+      }
+      
+      function resetModalFields() {
+        document.getElementById('m-title').value = '';
+        document.getElementById('m-desc').value = '';
+        document.getElementById('m-event-id').value = '';
+        document.getElementById('m-old-cal-id').value = '';
+        document.getElementById('m-date-start').value = '';
+        document.getElementById('m-date-end').value = '';
+        document.getElementById('m-time-start').value = '14:00';
+        document.getElementById('m-time-end').value = '15:00';
+        document.getElementById('m-time-start').disabled = false;
+        document.getElementById('m-time-end').disabled = false;
+        document.getElementById('m-allday').checked = false;
+        document.getElementById('m-multiday').checked = false;
+        document.getElementById('m-recurrence').value = 'none';
+        document.getElementById('m-recurrence').disabled = false;
+        document.getElementById('row-date-end').style.display = 'none';
+        document.getElementById('recurrence-until').style.display = 'none';
+      }
+
+      function closeModal() {
+        document.getElementById('eventModal').style.display = 'none';
+      }
+
+      function saveFromModal() {
+        const eventId = document.getElementById('m-event-id').value;
+        const oldCalId = document.getElementById('m-old-cal-id').value;
+        const newCalId = document.getElementById('m-calendar').value;
+        const isAllDay = document.getElementById('m-allday').checked;
+        const isMultiDay = document.getElementById('m-multiday').checked;
+        const recurrence = document.getElementById('m-recurrence').value;
+        
+        const title = document.getElementById('m-title').value.trim();
+        if (!title) {
+          showToast('Veuillez saisir un titre', 'warning');
+          document.getElementById('m-title').focus();
+          return;
+        }
+        
+        const dateStartVal = document.getElementById('m-date-start').value;
+        if (!dateStartVal) {
+          showToast('Veuillez saisir une date', 'warning');
+          return;
+        }
+        
+        const timeStartVal = document.getElementById('m-time-start').value;
+        const timeEndVal = document.getElementById('m-time-end').value;
+        
+        if (!isAllDay && (!timeStartVal || !timeEndVal)) {
+          showToast('Veuillez saisir les heures', 'warning');
+          return;
+        }
+        
+        // Pour événements non multi-jours, vérifier que fin > début
+        if (!isAllDay && !isMultiDay && timeStartVal >= timeEndVal) {
+          showToast('L\'heure de fin doit être après le début', 'warning');
+          return;
+        }
+        
+        if (!newCalId) {
+          showToast('Veuillez sélectionner un calendrier', 'warning');
+          return;
+        }
+        
+        // Construire les données
+        let dateEndVal = dateStartVal;
+        if (isMultiDay) {
+          dateEndVal = document.getElementById('m-date-end').value;
+          if (!dateEndVal) {
+            showToast('Veuillez saisir la date de fin', 'warning');
+            return;
+          }
+          if (dateEndVal < dateStartVal) {
+            showToast('La date de fin doit être après le début', 'warning');
+            return;
+          }
+        }
+        
+        let data;
+        if (isAllDay) {
+          data = {
+            title: title,
+            startDate: dateStartVal,
+            endDate: dateEndVal,
+            allDay: true,
+            description: document.getElementById('m-desc').value.trim()
+          };
+        } else {
+          data = {
+            title: title,
+            startDate: dateStartVal,
+            startTime: timeStartVal,
+            endDate: dateEndVal,
+            endTime: timeEndVal,
+            allDay: false,
+            description: document.getElementById('m-desc').value.trim()
+          };
+        }
+        
+        // Récurrence (seulement pour nouveaux événements)
+        if (!eventId && recurrence !== 'none') {
+          data.recurrence = recurrence;
+          data.recurrenceEnd = document.getElementById('m-recurrence-end').value;
+          if (!data.recurrenceEnd) {
+            showToast('Veuillez saisir la date de fin de récurrence', 'warning');
+            return;
+          }
+          if (data.recurrenceEnd < dateStartVal) {
+            showToast('La date de fin de récurrence doit être après le début', 'warning');
+            return;
+          }
+        }
+        
+        updateStatus('syncing', 'Enregistrement...');
+        document.getElementById('btn-save').disabled = true;
+        
+        const successHandler = (result) => {
+          calendar.refetchEvents();
+          updateStatus('ok');
+          closeModal();
+          
+          if (result && result.count > 1) {
+            showToast(`${result.count} événements créés`, 'success');
+          } else {
+            showToast(eventId ? 'Événement modifié' : 'Événement créé', 'success');
+          }
+          document.getElementById('btn-save').disabled = false;
+        };
+        
+        const errorHandler = (err) => {
+          updateStatus('error');
+          showToast('Erreur: ' + (err?.message || err), 'error');
+          document.getElementById('btn-save').disabled = false;
+        };
+        
+        if (eventId) {
+          google.script.run
+            .withSuccessHandler(successHandler)
+            .withFailureHandler(errorHandler)
+            .updateEvent(oldCalId, newCalId, eventId, data);
+        } else {
+          google.script.run
+            .withSuccessHandler(successHandler)
+            .withFailureHandler(errorHandler)
+            .addEventToCalendar(newCalId, data);
+        }
+      }
+
+      function deleteFromModal() {
+        if (!confirm('Supprimer cet événement ?')) return;
+        
+        updateStatus('syncing', 'Suppression...');
+        
+        google.script.run
+          .withSuccessHandler(() => {
+            calendar.refetchEvents();
+            updateStatus('ok');
+            closeModal();
+            showToast('Événement supprimé', 'success');
+          })
+          .withFailureHandler((err) => {
+            updateStatus('error');
+            showToast('Erreur: ' + (err?.message || err), 'error');
+          })
+          .deleteEvent(
+            document.getElementById('m-old-cal-id').value,
+            document.getElementById('m-event-id').value
+          );
+      }
+      
+      function toggleAllDay(isAllDay) {
+        const startInput = document.getElementById('m-time-start');
+        const endInput = document.getElementById('m-time-end');
+        
+        if (isAllDay) {
+          startInput.value = '00:00';
+          endInput.value = '23:45';
+          startInput.disabled = true;
+          endInput.disabled = true;
+        } else {
+          startInput.disabled = false;
+          endInput.disabled = false;
+          startInput.value = '09:00';
+          endInput.value = '10:00';
+        }
+      }
+      
+      function toggleMultiDay(isMultiDay) {
+        const rowDateEnd = document.getElementById('row-date-end');
+        rowDateEnd.style.display = isMultiDay ? 'flex' : 'none';
+        
+        if (isMultiDay && !document.getElementById('m-date-end').value) {
+          // Pré-remplir avec date de début + 1 jour
+          const startDateStr = document.getElementById('m-date-start').value;
+          if (startDateStr) {
+            // Parser la date correctement pour éviter le décalage UTC
+            const parts = startDateStr.split('-');
+            const endDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            endDate.setDate(endDate.getDate() + 1);
+            document.getElementById('m-date-end').value = formatDate(endDate);
+          }
+        }
+      }
+      
+      // ==================== UTILITAIRES ====================
+      
+      /**
+       * Remplit un <select> avec des créneaux de 15 minutes (00:00 à 23:45)
+       */
+      function populateTimeSelect(selectEl) {
+        selectEl.innerHTML = '';
+        for (let h = 0; h < 24; h++) {
+          for (let m = 0; m < 60; m += 15) {
+            const val = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val;
+            selectEl.appendChild(opt);
+          }
+        }
+      }
+      
+      function formatDate(date) {
+        // Utiliser la date locale, pas UTC
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      
+      function formatTime(date) {
+        let totalMin = date.getHours() * 60 + date.getMinutes();
+        totalMin = Math.round(totalMin / 15) * 15;
+        const h = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+        const m = String(totalMin % 60).padStart(2, '0');
+        return `${h}:${m}`;
+      }
+
+      // ==================== GESTION DES CALENDRIERS ====================
+      
+      function loadCalendarList() {
+        updateStatus('syncing', 'Chargement...');
+        
+        google.script.run
+          .withSuccessHandler(function(calendars) {
+            activeCalendars = calendars;
+            renderCalendarList();
+            calendar.refetchEvents();
+            updateStatus('ok');
+          })
+          .withFailureHandler(function(err) {
+            updateStatus('error', 'Erreur de chargement');
+            console.error(err);
+          })
+          .getUserCalendars();
+      }
+      
+      function renderCalendarList() {
+        const list = document.getElementById('calendar-list');
+        list.innerHTML = activeCalendars.map(cal => `
+          <li class="flex items-center p-2 rounded-lg hover:bg-white transition group">
+            <label class="flex items-center cursor-pointer flex-1 gap-3">
+              <input type="checkbox" checked 
+                     data-cal-id="${cal.id}"
+                     onchange="toggleCalendar('${cal.id}', this.checked)" 
+                     class="calendar-checkbox">
+              <span class="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full" style="background: ${cal.color}"></span>
+                ${cal.name}
+              </span>
+            </label>
+          </li>
+        `).join('');
+      }
+      
+      function toggleCalendar(calId, isVisible) {
+        // Simplement refetch pour l'instant (le filtrage se fait côté affichage)
+        calendar.refetchEvents();
+      }
+      
+      function getVisibleCalendarIds() {
+        const checkboxes = document.querySelectorAll('#calendar-list input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => cb.dataset.calId);
+      }
+
+      // ==================== GESTION DES VUES ====================
+      
+      function changeView(viewName, btn) {
+        calendar.changeView(viewName);
+        
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const calendarEl = document.getElementById('calendar');
+        calendarEl.style.minWidth = viewName === 'slidingView' ? '300%' : '100%';
+      }
+
+      // ==================== RECHERCHE ====================
+      
+      function searchEvent() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const searchTerm = document.getElementById('eventSearch').value.toLowerCase().trim();
+          
+          calendar.getEvents().forEach(evt => {
+            const matches = !searchTerm || 
+                           evt.title.toLowerCase().includes(searchTerm) ||
+                           (evt.extendedProps.description || '').toLowerCase().includes(searchTerm);
+            evt.setProp('display', matches ? 'auto' : 'none');
+          });
+        }, 200);
+      }
+
+      // ==================== AUTRES ACTIONS ====================
+      
+      function resetAgendas() {
+        google.script.run
+          .withSuccessHandler(loadCalendarList)
+          .resetHiddenCalendars();
+      }
+      
+      function handleEventUpdate(info) {
+        const evt = info.event;
+        
+        // Ne pas permettre le drag & drop des événements allDay via cette fonction
+        // (ils doivent être modifiés via le modal pour préserver leur statut)
+        if (evt.allDay) {
+          info.revert();
+          showToast('Pour modifier un événement "toute la journée", cliquez dessus', 'info');
+          return;
+        }
+        
+        // Vérifier que end existe
+        if (!evt.end) {
+          info.revert();
+          return;
+        }
+        
+        updateStatus('syncing');
+        
+        google.script.run
+          .withSuccessHandler(() => updateStatus('ok'))
+          .withFailureHandler((err) => {
+            updateStatus('error');
+            info.revert();
+            showToast('Erreur lors du déplacement', 'error');
+          })
+          .updateEventTimes(
+            evt.extendedProps.calendarId,
+            evt.id,
+            evt.start.toISOString(),
+            evt.end.toISOString()
+          );
+      }
+
+      // ==================== INITIALISATION ====================
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser les sélecteurs horaires par tranche de 15 min
+        populateTimeSelect(document.getElementById('m-time-start'));
+        populateTimeSelect(document.getElementById('m-time-end'));
+        
+        const calendarEl = document.getElementById('calendar');
+        
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'slidingView',
+          views: {
+            slidingView: {
+              type: 'timeGrid',
+              duration: { days: 21 }
+            }
+          },
+          locale: 'fr',
+          firstDay: 1, // Lundi
+          dayHeaderFormat: { weekday: 'short', day: '2-digit', month: 'short', omitCommas: true },
+          slotMinTime: '09:00:00',
+          slotMaxTime: '23:00:00',
+          snapDuration: '00:15:00',
+          height: 'auto',
+          nowIndicator: true,
+          stickyHeaderDates: true,
+          selectable: true,
+          editable: true,
+          eventStartEditable: true,
+          eventDurationEditable: true,
+          headerToolbar: false, // Désactivé car on utilise notre propre header
+          
+          // Rendu des événements
+          eventContent: function(arg) {
+            const desc = arg.event.extendedProps.description || '';
+            const truncatedDesc = desc.length > 40 ? desc.substring(0, 40) + '...' : desc;
+            
+            return {
+              html: `
+                <div class="p-1 overflow-hidden text-xs">
+                  <div class="font-semibold truncate">${arg.event.title}</div>
+                  ${truncatedDesc ? `<div class="opacity-80 truncate mt-0.5">${truncatedDesc}</div>` : ''}
+                </div>
+              `
+            };
+          },
+          
+          // Chargement des événements
+          events: function(info, successCallback, failureCallback) {
+            // Si pas encore de calendriers chargés, attendre
+            if (!activeCalendars.length) {
+              successCallback([]);
+              return;
+            }
+            
+            const visibleIds = getVisibleCalendarIds();
+            if (!visibleIds.length) {
+              successCallback([]);
+              return;
+            }
+            
+            updateStatus('syncing');
+            
+            google.script.run
+              .withSuccessHandler(data => {
+                // Filtrer par calendriers visibles
+                const filtered = data.filter(evt => visibleIds.includes(evt.calendarId));
+                successCallback(filtered);
+                updateStatus('ok');
+              })
+              .withFailureHandler(err => {
+                failureCallback(err);
+                updateStatus('error');
+              })
+              .getEventsForCalendars(activeCalendars.map(c => c.id), info.start.toISOString(), info.end.toISOString());
+          },
+          
+          // Interactions
+          select: function(info) {
+            openModal(info, false);
+            calendar.unselect();
+          },
+          
+          eventClick: function(info) {
+            openModal(info, true);
+          },
+          
+          eventDrop: handleEventUpdate,
+          eventResize: handleEventUpdate
+        });
+        
+        calendar.render();
+        loadCalendarList();
+        
+        // Initialiser le mini-calendrier
+        const miniCalendarEl = document.getElementById('mini-calendar');
+        miniCalendar = new FullCalendar.Calendar(miniCalendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'fr',
+          firstDay: 1,
+          headerToolbar: {
+            left: 'prev',
+            center: 'title',
+            right: 'next'
+          },
+          titleFormat: { year: 'numeric', month: 'long' },
+          dayHeaderFormat: { weekday: 'narrow' },
+          fixedWeekCount: false,
+          showNonCurrentDates: true,
+          height: 'auto',
+          dateClick: function(info) {
+            // Naviguer vers la date cliquée dans le calendrier principal
+            calendar.gotoDate(info.date);
+          }
+        });
+        miniCalendar.render();
+        
+        // Raccourci clavier Échap pour fermer le modal
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') closeModal();
+        });
+        
+        // Gérer l'affichage du champ date de fin de récurrence
+        const recurrenceSelect = document.getElementById('m-recurrence');
+        if (recurrenceSelect) {
+          recurrenceSelect.addEventListener('change', function() {
+            const recurrenceUntil = document.getElementById('recurrence-until');
+            recurrenceUntil.style.display = this.value !== 'none' ? 'flex' : 'none';
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
