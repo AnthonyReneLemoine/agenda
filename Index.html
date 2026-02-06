@@ -172,13 +172,22 @@
         background: rgba(25, 118, 210, 0.04) !important; 
       }
 
-      .fc .fc-timegrid-axis,
-      .fc .fc-timegrid-axis-frame {
+      .fc .fc-timegrid-axis {
         position: sticky;
         left: 0;
         z-index: 6;
         background: #ffffff;
+        min-width: 52px;
         box-shadow: 2px 0 0 var(--border-color);
+      }
+
+      .fc .fc-timegrid-axis-frame {
+        background: #ffffff;
+      }
+
+      .fc .fc-timegrid-axis-cushion {
+        position: relative;
+        z-index: 7;
       }
       
       .fc-timegrid-now-indicator-line { 
