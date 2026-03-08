@@ -996,7 +996,7 @@
         const col=document.createElement('div');
         col.className='day-col'+(isToday(d)?' is-today':''); col.style.width=DAY_W+'px'; col.style.height=totalH()+'px';
         for(let h=H_START;h<H_END;h++) for(let half=0;half<2;half++){
-          const sl=document.createElement('div'); sl.className='slot'+(half?'':' half');
+          const sl=document.createElement('div'); sl.className='slot'+(half?' half':'');
           sl.onclick=()=>{ const start=new Date(d); start.setHours(h,half?30:0,0,0); openModal({start,end:new Date(start.getTime()+3600000),allDay:false}); };
           col.appendChild(sl);
         }
