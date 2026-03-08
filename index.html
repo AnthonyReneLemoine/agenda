@@ -102,12 +102,44 @@
 
       /* Corps */
       #cal-body { display: flex; flex: 1; overflow: hidden; }
-      #time-col { width: var(--time-w); flex-shrink: 0; overflow: hidden; border-right: 1px solid var(--border); background: white; z-index: 10; }
+
+      /*
+         Colonne heures : on ne scrolle plus via scrollTop JS.
+         On utilise un seul conteneur scrollable (#body-scroll) qui
+         contient ENSEMBLE la colonne heures ET la grille jours,
+         de sorte qu'ils scrollent toujours de pair.
+      */
+      #body-scroll {
+        display: flex; flex: 1; overflow: auto; position: relative;
+      }
+      #body-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+      #body-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+      #body-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      #body-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* La colonne heures est sticky horizontalement (ne bouge pas en X) */
+      #time-col {
+        width: var(--time-w); flex-shrink: 0;
+        border-right: 1px solid var(--border);
+        background: white; z-index: 10;
+        position: sticky; left: 0;   /* épinglée à gauche lors du scroll X */
+      }
+
+      /* Chaque label = exactement 1 slot de hauteur */
       .t-label { height: var(--slot-h); position: relative; border-bottom: 1px solid #c8d4e0; }
       .t-label.half { border-bottom: 1px dashed #f1f5f9; }
-      .t-label .t-label-txt { position: absolute; top: -18px; right: 5px; font-size: 10px; font-weight: 600; color: #94a3b8; line-height: 1; }
+
+      /* Le texte de l'heure est centré verticalement dans son slot */
+      .t-label .t-label-txt {
+        position: absolute;
+        top: 50%; transform: translateY(-50%);
+        right: 6px;
+        font-size: 10px; font-weight: 600; color: #94a3b8; line-height: 1;
+        white-space: nowrap;
+      }
       .t-label.half .t-label-txt { display: none; }
-      #days-scroll { flex: 1; overflow: auto; position: relative; }
+
+      #days-scroll { flex: 1; overflow: visible; position: relative; }
       #days-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
       #days-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
       #days-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -439,8 +471,10 @@
             <div id="allday-scroll"><div id="allday-inner"></div></div>
           </div>
           <div id="cal-body">
-            <div id="time-col"><div id="time-inner"></div></div>
-            <div id="days-scroll"><div id="days-inner"></div><div id="drag-ghost"></div></div>
+            <div id="body-scroll">
+              <div id="time-col"><div id="time-inner"></div></div>
+              <div id="days-scroll"><div id="days-inner"></div><div id="drag-ghost"></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -930,10 +964,18 @@
     function renderTimeCol(){
       const inner=document.getElementById('time-inner');
       inner.innerHTML=''; inner.style.height=totalH()+'px';
-      for(let h=H_START;h<H_END;h++) for(let half=0;half<2;half++){
-        const el=document.createElement('div'); el.className='t-label'+(half?'':' half'); el.style.height=SLOT_H+'px';
-        const txt=document.createElement('span'); txt.className='t-label-txt'; txt.textContent=`${pz(h)}:00`;
+      for(let h=H_START;h<H_END;h++){
+        // Créneau heure pleine (texte aligné sur la ligne de l'heure)
+        const el=document.createElement('div');
+        el.className='t-label'; el.style.height=SLOT_H+'px';
+        const txt=document.createElement('span');
+        txt.className='t-label-txt';
+        txt.textContent=`${pz(h)}:00`;
         el.appendChild(txt); inner.appendChild(el);
+        // Créneau demi-heure (pas de texte)
+        const half=document.createElement('div');
+        half.className='t-label half'; half.style.height=SLOT_H+'px';
+        inner.appendChild(half);
       }
     }
 
@@ -1015,6 +1057,7 @@
     const dnd={active:false};
 
     function startDrag(mde,el,ev){
+      const bs=document.getElementById('body-scroll');
       const ds=document.getElementById('days-scroll'), ghost=document.getElementById('drag-ghost');
       const rect=el.getBoundingClientRect(), dsRect=ds.getBoundingClientRect();
       const offsetY=mde.clientY-rect.top, startX=mde.clientX, startY=mde.clientY;
@@ -1026,7 +1069,7 @@
       function onMove(mme){
         if(!moved&&Math.abs(mme.clientX-startX)<4&&Math.abs(mme.clientY-startY)<4) return;
         moved=true; hideTip(); el.classList.add('dragging'); ghost.style.display='block'; dnd.active=true;
-        const relX=mme.clientX-dsRect.left+ds.scrollLeft, relY=mme.clientY-dsRect.top+ds.scrollTop-offsetY;
+        const relX=mme.clientX-dsRect.left+bs.scrollLeft, relY=mme.clientY-dsRect.top+bs.scrollTop-offsetY;
         const colIdx=Math.max(0,Math.min(viewDays-1,Math.floor(relX/DAY_W)));
         const snapMin=Math.max(0,Math.min((H_END-H_START)*60-evDurMin,Math.round((relY/SLOT_H)*30/15)*15));
         ghost.style.left=(colIdx*DAY_W+2)+'px'; ghost.style.top=minToPx(snapMin)+'px'; ghost.style.right='auto';
@@ -1057,6 +1100,7 @@
        DRAG & DROP — REDIMENSIONNEMENT
     ============================================================ */
     function startResize(mde,el,ev){
+      const bs=document.getElementById('body-scroll');
       const ds=document.getElementById('days-scroll'), dsRect=ds.getBoundingClientRect();
       let moved=false;
       const evStart=new Date(ev.start), startMin=(evStart.getHours()-H_START)*60+evStart.getMinutes();
@@ -1064,7 +1108,7 @@
 
       function onMove(mme){
         moved=true; hideTip();
-        const relY=mme.clientY-dsRect.top+ds.scrollTop;
+        const relY=mme.clientY-dsRect.top+bs.scrollTop;
         const endMin=Math.max(startMin+15,Math.min((H_END-H_START)*60,Math.round((relY/SLOT_H)*30/15)*15));
         el.style.height=Math.max(minToPx(15),minToPx(endMin-startMin))+'px';
         const newEnd=new Date(evStart); newEnd.setMinutes(newEnd.getMinutes()+(endMin-startMin));
@@ -1095,15 +1139,20 @@
        SYNC SCROLL
     ============================================================ */
     function bindScroll(){
-      const ds=document.getElementById('days-scroll');
-      ds.onscroll=null;
-      ds.addEventListener('scroll',()=>{
-        document.getElementById('head-scroll').scrollLeft=ds.scrollLeft;
-        document.getElementById('allday-scroll').scrollLeft=ds.scrollLeft;
-        document.getElementById('time-col').scrollTop=ds.scrollTop;
+      const bs=document.getElementById('body-scroll');
+      bs.onscroll=null;
+      bs.addEventListener('scroll',()=>{
+        // Sync horizontal : en-tête jours + all-day suivent body-scroll en X
+        document.getElementById('head-scroll').scrollLeft   = bs.scrollLeft;
+        document.getElementById('allday-scroll').scrollLeft = bs.scrollLeft;
+        // Pas besoin de sync vertical : time-col est dans body-scroll (sticky left)
       },{passive:true});
     }
-    function scrollToNow(){ const now=new Date(); document.getElementById('days-scroll').scrollTop=Math.max(0,minToPx((now.getHours()-H_START)*60+now.getMinutes()-60)); }
+    function scrollToNow(){
+      const now=new Date();
+      const mins=(now.getHours()-H_START)*60+now.getMinutes()-60;
+      document.getElementById('body-scroll').scrollTop=Math.max(0,minToPx(mins));
+    }
 
     /* ============================================================
        TOOLTIP
@@ -1345,13 +1394,13 @@
 
     // Touch swipe sur le calendrier (gauche/droite = nav)
     (function initSwipe() {
-      const ds = document.getElementById('days-scroll');
+      const swipeEl = document.getElementById('body-scroll');
       let tx = 0, ty = 0;
-      ds.addEventListener('touchstart', e=>{
+      swipeEl.addEventListener('touchstart', e=>{
         tx = e.touches[0].clientX;
         ty = e.touches[0].clientY;
       }, {passive:true});
-      ds.addEventListener('touchend', e=>{
+      swipeEl.addEventListener('touchend', e=>{
         const dx = e.changedTouches[0].clientX - tx;
         const dy = e.changedTouches[0].clientY - ty;
         if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
