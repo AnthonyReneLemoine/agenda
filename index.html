@@ -606,8 +606,8 @@
     ============================================================ */
     const H_START   = 9;
     const H_END     = 23;
-    const SLOT_H    = 24;
-    const DAY_W     = 192;
+    let SLOT_H    = 24;
+    let DAY_W     = 192;
 
     const DAYS_FR   = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     const MONTHS_FR = ['janvier','février','mars','avril','mai','juin',
@@ -873,6 +873,14 @@
     function fmtTd(d){ return `${pz(d.getHours())}:${pz(d.getMinutes())}`; }
     function minToPx(m){ return (m/30)*SLOT_H; }
     function totalH(){ return (H_END-H_START)*2*SLOT_H; }
+
+    function syncDisplayMetrics(){
+      const rs=getComputedStyle(document.documentElement);
+      const slot=parseFloat(rs.getPropertyValue('--slot-h'));
+      const day=parseFloat(rs.getPropertyValue('--day-w'));
+      if(!Number.isNaN(slot) && slot>0) SLOT_H=slot;
+      if(!Number.isNaN(day) && day>0) DAY_W=day;
+    }
     function parseLocalDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
     function combineDateAndTime(date, ts){ const [h,m]=ts.split(':').map(Number); const r=new Date(date); r.setHours(h,m,0,0); return r; }
 
@@ -922,7 +930,7 @@
     /* ============================================================
        RENDU PRINCIPAL
     ============================================================ */
-    function renderAll(){ renderHead(); renderAllday(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar(); }
+    function renderAll(){ syncDisplayMetrics(); renderHead(); renderAllday(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar(); }
 
     function renderHead(){
       const inner=document.getElementById('head-inner');
