@@ -209,6 +209,169 @@
       .google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 11px; border: 1.5px solid #e2e8f0; border-radius: 9px; background: white; font-size: 14px; font-weight: 600; color: #374151; cursor: pointer; transition: all .15s; }
       .google-btn:hover { background: #f8fafc; border-color: #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
       #auth-note { font-size: 12px; color: #94a3b8; max-width: 340px; text-align: center; line-height: 1.5; }
+
+      /* ============================================================
+         RESPONSIVE — MOBILE (OnePlus 11 : 412px largeur logique)
+      ============================================================ */
+
+      /* ── Sidebar mobile : drawer par-dessus le contenu ── */
+      @media (max-width: 768px) {
+        :root {
+          --day-w:   120px;
+          --time-w:  40px;
+          --slot-h:  28px;
+          --head-h:  44px;
+        }
+
+        /* Sidebar en overlay */
+        .sidebar {
+          position: fixed; top: 0; left: 0; bottom: 0;
+          z-index: 500; width: 260px;
+          box-shadow: 4px 0 20px rgba(0,0,0,.18);
+          transform: translateX(0);
+          transition: transform .28s ease, opacity .28s ease;
+          margin-left: 0 !important; opacity: 1 !important;
+          pointer-events: auto !important;
+          padding-top: 60px;
+        }
+        .sidebar.hidden {
+          transform: translateX(-100%);
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        /* Scrim derrière la sidebar */
+        #sidebar-scrim {
+          display: none;
+          position: fixed; inset: 0; z-index: 499;
+          background: rgba(0,0,0,.35);
+        }
+        #sidebar-scrim.on { display: block; }
+
+        /* Topbar mobile : tout sur une ligne compacte */
+        .topbar { padding: 8px 10px; gap: 6px; }
+        .topbar-left { gap: 6px; }
+        .topbar-right { gap: 5px; }
+
+        /* Cacher la recherche dans la topbar sur mobile */
+        .srch-wrap { display: none; }
+
+        /* Cacher le groupe navigation centre (nav prev/today/next + search) */
+        #topbar-center { display: none !important; }
+
+        /* Centrage navigation : position static sur mobile */
+        .topbar > div[style*="position:absolute"],
+        .topbar > div[style*="position: absolute"] {
+          position: static !important;
+          transform: none !important;
+          left: auto !important;
+        }
+
+        /* Boutons vues : plus compacts */
+        .vbtn { padding: 5px 8px; font-size: 11px; }
+
+        /* Barre de navigation inférieure mobile */
+        #mobile-nav {
+          display: flex;
+          position: fixed; bottom: 0; left: 0; right: 0;
+          height: var(--nav-h);
+          background: var(--header-bg);
+          border-top: 1px solid #334155;
+          z-index: 400;
+          align-items: center;
+          justify-content: space-around;
+          padding: 0 4px;
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        #mobile-nav button {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 3px; background: none; border: none; color: #94a3b8;
+          font-size: 10px; font-weight: 600; cursor: pointer;
+          padding: 6px 10px; border-radius: 8px; flex: 1;
+          transition: color .15s, background .15s;
+        }
+        #mobile-nav button:active,
+        #mobile-nav button.active { color: white; background: #334155; }
+        #mobile-nav button svg { width: 20px; height: 20px; }
+
+        /* Bouton + flottant */
+        #fab {
+          display: flex;
+          position: fixed; bottom: calc(var(--nav-h) + 14px); right: 16px;
+          width: 52px; height: 52px; border-radius: 50%;
+          background: #3b82f6; color: white; border: none;
+          font-size: 26px; align-items: center; justify-content: center;
+          box-shadow: 0 4px 16px rgba(59,130,246,.45);
+          cursor: pointer; z-index: 410;
+          transition: transform .15s, box-shadow .15s;
+        }
+        #fab:active { transform: scale(.92); box-shadow: 0 2px 8px rgba(59,130,246,.4); }
+
+        /* Bouton Créer de la topbar : caché sur mobile (remplacé par FAB) */
+        .topbar-left .btn-p { display: none; }
+
+        /* Le corps doit tenir compte de la barre du bas */
+        .app { padding-bottom: var(--nav-h); }
+
+        /* Modal plein écran sur mobile */
+        .modal-box {
+          width: 100%; margin: 0;
+          border-radius: 20px 20px 0 0;
+          position: fixed; bottom: 0; left: 0; right: 0;
+          max-height: 92vh;
+        }
+        #modal { align-items: flex-end; }
+
+        /* Inputs plus grands pour le touch */
+        input[type=text], input[type=date], textarea, select {
+          font-size: 16px; /* évite le zoom iOS/Android */
+          padding: 9px 11px;
+        }
+        .btn { padding: 10px 16px; font-size: 14px; }
+
+        /* Toasts en bas sur mobile */
+        #toast-box { top: auto; bottom: calc(var(--nav-h) + 70px); right: 10px; left: 10px; }
+        .toast { min-width: unset; }
+
+        /* Auth box */
+        .auth-box { width: calc(100vw - 32px); padding: 32px 24px; }
+
+        /* Statut : cacher le texte, garder le dot */
+        #stxt { display: none; }
+
+        /* Bouton déconnexion caché dans topbar mobile (accessible via menu sidebar) */
+        #btn-so { display: none !important; }
+
+        /* Slot touch : un peu plus haut */
+        .slot { height: var(--slot-h); }
+
+        /* Scrollbar fine sur mobile */
+        #days-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
+      }
+
+      /* ── Desktop full HD (≥ 1080px) ── */
+      @media (min-width: 1080px) {
+        :root {
+          --day-w:   200px;
+          --slot-h:  26px;
+          --head-h:  54px;
+        }
+        #mobile-nav { display: none; }
+        #fab        { display: none; }
+        /* Recherche plus large */
+        #srch { width: 220px; }
+      }
+
+      /* Desktop normal (769px – 1079px) */
+      @media (min-width: 769px) and (max-width: 1079px) {
+        #mobile-nav { display: none; }
+        #fab        { display: none; }
+      }
+
+      /* ── Touch events (drag & resize désactivés sur mobile) ── */
+      @media (hover: none) {
+        .ev { cursor: pointer; }
+        .ev-resize { display: none; }
+      }
     </style>
   </head>
   <body>
@@ -223,7 +386,7 @@
             <span style="font-size:16px;line-height:1;">+</span> Créer
           </button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;position:absolute;left:50%;transform:translateX(-50%);">
+        <div id="topbar-center" style="display:flex;align-items:center;gap:8px;position:absolute;left:50%;transform:translateX(-50%);">
           <button class="nbtn" onclick="nav(-1)" style="font-size:16px;">‹</button>
           <button class="nbtn" onclick="goToday()" style="font-size:12px;font-weight:700;min-width:44px;">Auj.</button>
           <button class="nbtn" onclick="nav(1)"  style="font-size:16px;">›</button>
@@ -257,6 +420,12 @@
           <div id="mc-grid" class="mc-grid"></div>
           <div class="sec-title">Agendas</div>
           <div id="cal-list"></div>
+          <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);">
+            <button onclick="doSignOut()" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:4px 0;width:100%;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Déconnexion
+            </button>
+          </div>
         </div>
 
         <div id="cal-wrap">
@@ -279,6 +448,36 @@
 
     <div id="toast-box"></div>
     <div id="tip"></div>
+
+    <!-- Scrim sidebar mobile -->
+    <div id="sidebar-scrim" onclick="closeSidebarMobile()"></div>
+
+    <!-- FAB mobile -->
+    <button id="fab" onclick="openModal()" title="Créer un événement" style="display:none;">+</button>
+
+    <!-- Barre navigation mobile -->
+    <nav id="mobile-nav" style="display:none;">
+      <button onclick="nav(-1)" title="Précédent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Préc.
+      </button>
+      <button onclick="goToday()" title="Aujourd'hui">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Auj.
+      </button>
+      <button onclick="setMobileView(1)"  id="mnv-1"  title="1 jour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        1 j
+      </button>
+      <button onclick="setMobileView(7)"  id="mnv-7"  title="7 jours">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/><line x1="14" y1="3" x2="14" y2="21"/></svg>
+        7 j
+      </button>
+      <button onclick="toggleSidebar()" title="Agendas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        Agendas
+      </button>
+    </nav>
 
     <!-- Modal événement -->
     <div id="modal">
@@ -466,6 +665,7 @@
       populateTimes(document.getElementById('m-ts'));
       populateTimes(document.getElementById('m-te'));
       renderMiniCal();
+      initResponsive();   // ← adapte la vue selon l'écran
       renderAll();
       loadCalendarList();
       setTimeout(scrollToNow, 150);
@@ -628,6 +828,7 @@
       btn.classList.add('on');
       if(n===7){ const dow=(viewStart.getDay()+6)%7; viewStart=addD(viewStart,-dow); }
       renderAll(); loadEvents();
+      if(typeof updateMobileNavActive==='function') updateMobileNavActive();
     }
 
     /* ============================================================
@@ -1057,6 +1258,85 @@
     document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     document.getElementById('modal').addEventListener('click', e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
     initGIS();
+
+    /* ============================================================
+       RESPONSIVE — MOBILE
+    ============================================================ */
+    const isMobile = () => window.innerWidth <= 768;
+
+    function initResponsive() {
+      const nav = document.getElementById('mobile-nav');
+      const fab = document.getElementById('fab');
+      if (isMobile()) {
+        nav.style.display = 'flex';
+        fab.style.display = 'flex';
+        // Vue par défaut mobile : 1 jour
+        if (viewDays === 21) {
+          viewDays = 1;
+          viewStart = sod(new Date());
+          document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
+        }
+        updateMobileNavActive();
+      } else {
+        nav.style.display = 'none';
+        fab.style.display = 'none';
+      }
+    }
+
+    function setMobileView(n) {
+      viewDays = n;
+      document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
+      if(n===7){ const dow=(viewStart.getDay()+6)%7; viewStart=addD(viewStart,-dow); }
+      renderAll(); loadEvents();
+      updateMobileNavActive();
+    }
+
+    function updateMobileNavActive() {
+      ['mnv-1','mnv-7'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        const n=parseInt(id.split('-')[1]);
+        el.classList.toggle('active', viewDays===n);
+      });
+    }
+
+    function closeSidebarMobile() {
+      if(!isMobile()) return;
+      sidebarVis = false;
+      document.getElementById('sidebar').classList.add('hidden');
+      document.getElementById('sidebar-scrim').classList.remove('on');
+    }
+
+    // Surcharge toggleSidebar pour mobile (scrim)
+    const _toggleSidebarOrig = toggleSidebar;
+    function toggleSidebar() {
+      sidebarVis = !sidebarVis;
+      document.getElementById('sidebar').classList.toggle('hidden', !sidebarVis);
+      if (isMobile()) {
+        document.getElementById('sidebar-scrim').classList.toggle('on', sidebarVis);
+      }
+    }
+
+    // Touch swipe sur le calendrier (gauche/droite = nav)
+    (function initSwipe() {
+      const ds = document.getElementById('days-scroll');
+      let tx = 0, ty = 0;
+      ds.addEventListener('touchstart', e=>{
+        tx = e.touches[0].clientX;
+        ty = e.touches[0].clientY;
+      }, {passive:true});
+      ds.addEventListener('touchend', e=>{
+        const dx = e.changedTouches[0].clientX - tx;
+        const dy = e.changedTouches[0].clientY - ty;
+        if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+          nav(dx < 0 ? 1 : -1);
+        }
+      }, {passive:true});
+    })();
+
+    // Init au chargement et au resize
+    window.addEventListener('resize', initResponsive);
+    // initResponsive() est appelé dans onSignedIn() après le login
+
     </script>
   </body>
 </html>
