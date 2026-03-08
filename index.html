@@ -129,10 +129,10 @@
       .t-label { height: var(--slot-h); position: relative; border-bottom: 1px solid #c8d4e0; }
       .t-label.half { border-bottom: 1px dashed #f1f5f9; }
 
-      /* Le texte de l'heure est centré verticalement dans son slot */
+      /* Le texte de l'heure est aligné sur la ligne du haut du slot */
       .t-label .t-label-txt {
         position: absolute;
-        top: 50%; transform: translateY(-50%);
+        top: -7px;          /* moitié de la hauteur du texte → centré sur la ligne */
         right: 6px;
         font-size: 10px; font-weight: 600; color: #94a3b8; line-height: 1;
         white-space: nowrap;
