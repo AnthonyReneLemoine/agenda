@@ -129,13 +129,14 @@
       .t-label { height: var(--slot-h); position: relative; border-bottom: 1px solid #c8d4e0; }
       .t-label.half { border-bottom: 1px dashed #f1f5f9; }
 
-      /* Le texte de l'heure est aligné sur la ligne du haut du slot */
-      .t-label .t-label-txt {
+      /* Labels heures : positionnés en absolu sur la ligne exacte */
+      .t-label-txt {
         position: absolute;
-        top: -7px;          /* moitié de la hauteur du texte → centré sur la ligne */
+        transform: translateY(-50%);   /* centré verticalement sur la ligne */
         right: 6px;
         font-size: 10px; font-weight: 600; color: #94a3b8; line-height: 1;
         white-space: nowrap;
+        pointer-events: none;
       }
       .t-label.half .t-label-txt { display: none; }
 
@@ -964,19 +965,27 @@
     function renderTimeCol(){
       const inner=document.getElementById('time-inner');
       inner.innerHTML=''; inner.style.height=totalH()+'px';
-      for(let h=H_START;h<H_END;h++){
-        // Créneau heure pleine (texte aligné sur la ligne de l'heure)
+      // On place le texte "Xh:00" sur la ligne du HAUT du slot correspondant.
+      // Chaque slot fait SLOT_H px. Le label est positionné en absolu
+      // à exactement minToPx((h - H_START)*60) px depuis le haut.
+      const container=document.createElement('div');
+      container.style.cssText='position:relative;height:'+totalH()+'px;';
+      // Slots de fond (pour les bordures)
+      for(let h=H_START;h<H_END;h++) for(let half=0;half<2;half++){
         const el=document.createElement('div');
-        el.className='t-label'; el.style.height=SLOT_H+'px';
-        const txt=document.createElement('span');
-        txt.className='t-label-txt';
-        txt.textContent=`${pz(h)}:00`;
-        el.appendChild(txt); inner.appendChild(el);
-        // Créneau demi-heure (pas de texte)
-        const half=document.createElement('div');
-        half.className='t-label half'; half.style.height=SLOT_H+'px';
-        inner.appendChild(half);
+        el.className='t-label'+(half?' half':'');
+        el.style.height=SLOT_H+'px';
+        container.appendChild(el);
       }
+      // Labels positionnés en absolu exactement sur la ligne de l'heure
+      for(let h=H_START;h<H_END;h++){
+        const lbl=document.createElement('span');
+        lbl.className='t-label-txt';
+        lbl.textContent=`${pz(h)}:00`;
+        lbl.style.top=minToPx((h-H_START)*60)+'px';
+        container.appendChild(lbl);
+      }
+      inner.appendChild(container);
     }
 
     function renderDays(){
