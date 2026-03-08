@@ -700,16 +700,40 @@
     }
 
     /* Récupère tous les calendriers de l'utilisateur */
+    const LS_CAL_VIS = 'gcal_cal_visibility';
+    const DEFAULT_HIDDEN = ["SA L'Hermine", 'Congés',
+      'Jours fériés et autres fêtes en France', 'Exposition'];
+
+    function loadCalVisibility() {
+      try { return JSON.parse(localStorage.getItem(LS_CAL_VIS) || 'null'); }
+      catch(e) { return null; }
+    }
+    function saveCalVisibility(cals) {
+      const map = {};
+      cals.forEach(c => { map[c.id] = c.visible; });
+      localStorage.setItem(LS_CAL_VIS, JSON.stringify(map));
+    }
+
     async function gcalGetCalendars() {
-      const data = await gcalFetch(`${API_BASE}/users/me/calendarList?maxResults=250`);
-      const DEFAULT_HIDDEN = ['Congés', "SA L'Hermine",
-        'Jours fériés et autres fêtes en France', 'Exposition'];
-      return (data.items || []).map(c => ({
-        id:      c.id,
-        name:    c.summary || c.id,
-        color:   c.backgroundColor || '#3b82f6',
-        visible: !DEFAULT_HIDDEN.includes(c.summary)
-      }));
+      const data    = await gcalFetch(`${API_BASE}/users/me/calendarList?maxResults=250`);
+      const saved   = loadCalVisibility(); // null = première ouverture
+
+      return (data.items || []).map(c => {
+        let visible;
+        if (saved && c.id in saved) {
+          // Préférence déjà sauvegardée → la respecter
+          visible = saved[c.id];
+        } else {
+          // Première ouverture → appliquer les masquages par défaut
+          visible = !DEFAULT_HIDDEN.includes(c.summary);
+        }
+        return {
+          id:      c.id,
+          name:    c.summary || c.id,
+          color:   c.backgroundColor || '#3b82f6',
+          visible
+        };
+      });
     }
 
     /* Récupère les événements d'un calendrier sur une plage */
@@ -1100,6 +1124,7 @@
       setStatus('syncing','Chargement…');
       try {
         calendars = await gcalGetCalendars();
+        saveCalVisibility(calendars);   // ← mémorise l'état initial
         renderCalList();
         await loadEvents();
         setStatus('ok');
@@ -1134,7 +1159,9 @@
 
     function toggleCal(id,vis){
       const c=calendars.find(x=>x.id===id); if(!c) return;
-      c.visible=vis; renderCalList(); loadEvents();
+      c.visible=vis;
+      saveCalVisibility(calendars);   // ← persiste la préférence
+      renderCalList(); loadEvents();
     }
 
     /* ============================================================
