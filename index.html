@@ -126,8 +126,8 @@
       }
 
       /* Chaque label = exactement 1 slot de hauteur */
-      .t-label { height: var(--slot-h); position: relative; border-bottom: 1px solid #c8d4e0; }
-      .t-label.half { border-bottom: 1px dashed #f1f5f9; }
+      .t-label { height: var(--slot-h); position: relative; border-top: 1px solid #c8d4e0; }
+      .t-label.half { border-top: 1px dashed #f1f5f9; }
 
       /* Labels heures : positionnés en absolu sur la ligne exacte */
       .t-label-txt {
@@ -148,8 +148,8 @@
       #days-inner { display: flex; position: relative; }
       .day-col { flex-shrink: 0; width: var(--day-w); border-right: 1px solid var(--border); position: relative; }
       .day-col.is-today { background: rgba(59,130,246,.025); }
-      .slot { height: var(--slot-h); border-bottom: 1px solid #c8d4e0; }
-      .slot.half  { border-bottom: 1px dashed #f1f5f9; }
+      .slot { height: var(--slot-h); border-top: 1px solid #c8d4e0; }
+      .slot.half  { border-top: 1px dashed #f1f5f9; }
       .slot:hover { background: rgba(59,130,246,.05); cursor: pointer; }
 
       /* Events */
