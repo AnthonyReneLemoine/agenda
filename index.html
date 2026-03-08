@@ -395,8 +395,28 @@
 
     /* ============================================================
        AUTH — Google Identity Services (token model)
+       Persistance : sessionStorage (survit aux rechargements,
+       effacé à la fermeture de l'onglet/navigateur)
     ============================================================ */
     let tokenClient = null;
+    const SS_TOKEN  = 'gcal_access_token';
+    const SS_EXPIRY = 'gcal_token_expiry';
+
+    function saveToken(token, expiresIn) {
+      const expiry = Date.now() + (expiresIn - 60) * 1000;
+      sessionStorage.setItem(SS_TOKEN,  token);
+      sessionStorage.setItem(SS_EXPIRY, String(expiry));
+    }
+    function loadToken() {
+      const token  = sessionStorage.getItem(SS_TOKEN);
+      const expiry = parseInt(sessionStorage.getItem(SS_EXPIRY) || '0', 10);
+      if (token && Date.now() < expiry) return token;
+      clearToken(); return null;
+    }
+    function clearToken() {
+      sessionStorage.removeItem(SS_TOKEN);
+      sessionStorage.removeItem(SS_EXPIRY);
+    }
 
     function initGIS() {
       if (!window.google?.accounts?.oauth2) {
@@ -408,16 +428,33 @@
         callback: (resp) => {
           if (resp.error) { showToast('Erreur auth : ' + resp.error, 'error'); return; }
           accessToken = resp.access_token;
+          saveToken(resp.access_token, resp.expires_in || 3600);
           onSignedIn();
         }
       });
+
+      // Restauration silencieuse depuis sessionStorage
+      const saved = loadToken();
+      if (saved) {
+        accessToken = saved;
+        onSignedIn();
+      }
+
+      // Auto-refresh : renouveler silencieusement 2 min avant expiration
+      setInterval(() => {
+        const expiry = parseInt(sessionStorage.getItem(SS_EXPIRY) || '0', 10);
+        if (accessToken && Date.now() > expiry - 120000) {
+          tokenClient.requestAccessToken({ prompt: '' });
+        }
+      }, 60000);
     }
 
-    function doSignIn()  { if (tokenClient) tokenClient.requestAccessToken(); }
+    function doSignIn()  { if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' }); }
     function doSignOut() {
       if (!confirm('Se déconnecter ?')) return;
       if (accessToken) google.accounts.oauth2.revoke(accessToken);
       accessToken = null;
+      clearToken();
       calendars = []; events = [];
       document.getElementById('auth-overlay').classList.add('on');
       document.getElementById('btn-so').style.display = 'none';
