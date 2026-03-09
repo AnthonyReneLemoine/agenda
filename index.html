@@ -73,6 +73,22 @@
       .cal-cb:checked::after { content: '✓'; position: absolute; top: -3px; left: 1px; color: white; font-size: 10px; font-weight: 700; }
       .sec-title { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .08em; margin: 14px 0 6px; }
 
+      /* Horloges monde */
+      .world-clock { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+      .world-clock details { border: 1px solid var(--border); border-radius: 10px; background: white; overflow: hidden; }
+      .world-clock summary {
+        list-style: none; cursor: pointer; user-select: none;
+        padding: 9px 11px; display: flex; align-items: center; justify-content: space-between;
+        font-size: 12px; font-weight: 700; color: #334155;
+      }
+      .world-clock summary::-webkit-details-marker { display: none; }
+      .world-clock .wc-chevron { color: #64748b; transition: transform .18s; }
+      .world-clock details[open] .wc-chevron { transform: rotate(180deg); }
+      .wc-list { padding: 4px 8px 9px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); background: #f8fafc; }
+      .wc-item { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 8px; }
+      .wc-city { font-size: 11px; color: #475569; line-height: 1.2; }
+      .wc-time { font-size: 13px; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
       /* CAL ZONE */
       #cal-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: white; position: relative; }
 
@@ -453,6 +469,28 @@
           <div id="mc-grid" class="mc-grid"></div>
           <div class="sec-title">Agendas</div>
           <div id="cal-list"></div>
+          <div class="world-clock">
+            <details open>
+              <summary>
+                <span>Heures en temps réel</span>
+                <span class="wc-chevron">▾</span>
+              </summary>
+              <div class="wc-list">
+                <div class="wc-item">
+                  <span class="wc-city">Los Angeles</span>
+                  <span class="wc-time" id="clock-la">--:--:--</span>
+                </div>
+                <div class="wc-item">
+                  <span class="wc-city">Soledade (Rio Grande do Sul, Brésil)</span>
+                  <span class="wc-time" id="clock-soledade">--:--:--</span>
+                </div>
+                <div class="wc-item">
+                  <span class="wc-city">Abidjan</span>
+                  <span class="wc-time" id="clock-abidjan">--:--:--</span>
+                </div>
+              </div>
+            </details>
+          </div>
           <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);">
             <button onclick="doSignOut()" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:4px 0;width:100%;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -626,6 +664,7 @@
     let sidebarVis  = true;
     let mcDate      = new Date();
     let debTimer    = null;
+    let worldClockTimer = null;
 
     /* ============================================================
        AUTH — Google Identity Services (token model)
@@ -883,6 +922,22 @@
     }
     function parseLocalDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
     function combineDateAndTime(date, ts){ const [h,m]=ts.split(':').map(Number); const r=new Date(date); r.setHours(h,m,0,0); return r; }
+
+    function updateWorldClocks(){
+      const now = new Date();
+      const format = tz => new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: tz
+      }).format(now);
+      document.getElementById('clock-la').textContent = format('America/Los_Angeles');
+      document.getElementById('clock-soledade').textContent = format('America/Sao_Paulo');
+      document.getElementById('clock-abidjan').textContent = format('Africa/Abidjan');
+    }
+
+    function initWorldClocks(){
+      updateWorldClocks();
+      if(worldClockTimer) clearInterval(worldClockTimer);
+      worldClockTimer = setInterval(updateWorldClocks, 1000);
+    }
 
     /* ============================================================
        NAVIGATION
@@ -1351,6 +1406,7 @@
     document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     document.getElementById('modal').addEventListener('click', e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
     initGIS();
+    initWorldClocks();
 
     /* ============================================================
        RESPONSIVE — MOBILE
