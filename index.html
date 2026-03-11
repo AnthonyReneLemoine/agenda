@@ -657,11 +657,13 @@
 
     // Firebase Auth (Email / mot de passe)
     // ⚠️ Remplacez ces valeurs par la configuration de votre projet Firebase.
-    const FIREBASE_CONFIG = {
-      apiKey: '',
-      authDomain: '',
-      projectId: '',
-      appId: ''
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDxwThDOzSuhlutGM2X10csENHXVXikFOs',
+      authDomain: 'agenda-56781.firebaseapp.com',
+      projectId: 'agenda-56781',
+      storageBucket: 'agenda-56781.firebasestorage.app',
+      messagingSenderId: '952610939479',
+      appId: '1:952610939479:web:f3c4da0a1becc0aa0b7912'
     };
 
     /* ============================================================
@@ -723,12 +725,12 @@
         showToast('SDK Firebase indisponible', 'error');
         return;
       }
-      if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.authDomain || !FIREBASE_CONFIG.projectId || !FIREBASE_CONFIG.appId) {
-        document.getElementById('auth-error').textContent = 'Configurez FIREBASE_CONFIG pour activer la connexion.';
+      if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.appId) {
+        document.getElementById('auth-error').textContent = 'Configurez firebaseConfig pour activer la connexion.';
         return;
       }
 
-      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
       firebaseAuth = firebase.auth();
       firebaseAuth.onAuthStateChanged((user) => {
         if (!user) {
