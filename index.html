@@ -632,7 +632,7 @@
           <div id="auth-error"></div>
         </form>
       </div>
-      <div id="auth-note">Une fois connecté, l'application ouvre l'accès à Google Calendar pour charger vos données.</div>
+      <div id="auth-note">Connexion applicative via Firebase Auth, puis accès Google Calendar pour charger vos données.</div>
     </div>
 
     <!--
@@ -641,6 +641,8 @@
       CLIENT_ID : à remplacer dans la config ci-dessous
       ============================================================
     -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
     'use strict';
@@ -652,6 +654,15 @@
     const CLIENT_ID = '1091567193044-n64qqmbd6pu8l2pkkocab6cnf0nj7qui.apps.googleusercontent.com';
     const SCOPES    = 'https://www.googleapis.com/auth/calendar';
     const API_BASE  = 'https://www.googleapis.com/calendar/v3';
+
+    // Firebase Auth (Email / mot de passe)
+    // ⚠️ Remplacez ces valeurs par la configuration de votre projet Firebase.
+    const FIREBASE_CONFIG = {
+      apiKey: '',
+      authDomain: '',
+      projectId: '',
+      appId: ''
+    };
 
     /* ============================================================
        CONSTANTES AFFICHAGE
@@ -686,11 +697,10 @@
        effacé à la fermeture de l'onglet/navigateur)
     ============================================================ */
     let tokenClient = null;
+    let firebaseAuth = null;
+    let googleTokenRequested = false;
     const SS_TOKEN  = 'gcal_access_token';
     const SS_EXPIRY = 'gcal_token_expiry';
-    const SS_APP_AUTH = 'agenda_app_auth';
-    const APP_LOGIN = 'admin';
-    const APP_PASSWORD = 'agenda123';
 
     function saveToken(token, expiresIn) {
       const expiry = Date.now() + (expiresIn - 60) * 1000;
@@ -706,6 +716,41 @@
     function clearToken() {
       sessionStorage.removeItem(SS_TOKEN);
       sessionStorage.removeItem(SS_EXPIRY);
+    }
+
+    function initFirebaseAuth() {
+      if (!window.firebase) {
+        showToast('SDK Firebase indisponible', 'error');
+        return;
+      }
+      if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.authDomain || !FIREBASE_CONFIG.projectId || !FIREBASE_CONFIG.appId) {
+        document.getElementById('auth-error').textContent = 'Configurez FIREBASE_CONFIG pour activer la connexion.';
+        return;
+      }
+
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      firebaseAuth = firebase.auth();
+      firebaseAuth.onAuthStateChanged((user) => {
+        if (!user) {
+          accessToken = null;
+          clearToken();
+          document.getElementById('auth-overlay').classList.add('on');
+          document.getElementById('btn-so').style.display = 'none';
+          return;
+        }
+
+        const saved = loadToken();
+        if (saved) {
+          accessToken = saved;
+          onSignedIn();
+          return;
+        }
+
+        if (tokenClient && !googleTokenRequested) {
+          googleTokenRequested = true;
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+        }
+      });
     }
 
     function initGIS() {
@@ -725,10 +770,12 @@
 
       // Restauration silencieuse depuis sessionStorage
       const saved = loadToken();
-      const appAuth = sessionStorage.getItem(SS_APP_AUTH) === '1';
-      if (saved && appAuth) {
+      if (saved && firebaseAuth?.currentUser) {
         accessToken = saved;
         onSignedIn();
+      } else if (firebaseAuth?.currentUser && !googleTokenRequested) {
+        googleTokenRequested = true;
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
       }
 
       // Auto-refresh : renouveler silencieusement 2 min avant expiration
@@ -740,26 +787,35 @@
       }, 60000);
     }
 
-    function doSignIn(evt)  {
+    async function doSignIn(evt)  {
       evt?.preventDefault();
       const login = document.getElementById('auth-login')?.value?.trim() || '';
       const password = document.getElementById('auth-password')?.value || '';
       const err = document.getElementById('auth-error');
-      if (login !== APP_LOGIN || password !== APP_PASSWORD) {
-        if (err) err.textContent = 'Identifiants invalides.';
+
+      if (!firebaseAuth) {
+        if (err) err.textContent = 'Firebase Auth non configuré.';
         return false;
       }
+
       if (err) err.textContent = '';
-      sessionStorage.setItem(SS_APP_AUTH, '1');
-      if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
+      try {
+        await firebaseAuth.signInWithEmailAndPassword(login, password);
+        if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
+      } catch (e) {
+        const msg = e?.code === 'auth/invalid-credential'
+          ? 'Identifiants invalides.'
+          : (e?.message || 'Erreur de connexion');
+        if (err) err.textContent = msg;
+      }
       return false;
     }
-    function doSignOut() {
+    async function doSignOut() {
       if (!confirm('Se déconnecter ?')) return;
       if (accessToken) google.accounts.oauth2.revoke(accessToken);
       accessToken = null;
       clearToken();
-      sessionStorage.removeItem(SS_APP_AUTH);
+      if (firebaseAuth?.currentUser) await firebaseAuth.signOut();
       calendars = []; events = [];
       document.getElementById('auth-overlay').classList.add('on');
       document.getElementById('btn-so').style.display = 'none';
@@ -1437,6 +1493,7 @@
     ============================================================ */
     document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     document.getElementById('modal').addEventListener('click', e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
+    initFirebaseAuth();
     initGIS();
     initWorldClocks();
 
