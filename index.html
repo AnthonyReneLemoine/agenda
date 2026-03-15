@@ -442,6 +442,7 @@
         <div class="topbar-left">
           <button onclick="toggleSidebar()" style="background:none;border:none;color:white;cursor:pointer;padding:4px 7px;border-radius:5px;font-size:18px;line-height:1;">☰</button>
           <strong style="font-size:15px;letter-spacing:-.02em;">Agenda</strong>
+          <span style="font-size:10px;color:#64748b;font-weight:600;background:#0f172a;padding:2px 6px;border-radius:4px;">v3</span>
           <button onclick="openModal()" class="btn btn-p" style="padding:5px 12px;display:flex;align-items:center;gap:5px;">
             <span style="font-size:16px;line-height:1;">+</span> Créer
           </button>
@@ -618,21 +619,13 @@
       <div class="auth-box">
         <div style="font-size:40px;margin-bottom:12px;">📅</div>
         <h2>Agenda</h2>
-        <p>Connectez-vous avec votre identifiant et votre mot de passe.</p>
-        <form class="auth-form" onsubmit="return doSignIn(event)">
-          <label>
-            Login
-            <input id="auth-login" autocomplete="username" required>
-          </label>
-          <label>
-            Mot de passe
-            <input id="auth-password" type="password" autocomplete="current-password" required>
-          </label>
-          <button class="auth-submit" type="submit">Se connecter</button>
-          <div id="auth-error"></div>
-        </form>
+        <p>Connectez-vous avec votre compte Google pour accéder à votre agenda.</p>
+        <button class="auth-submit" onclick="doSignIn()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:8px;">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.4 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.4 29.3 4 24 4 16.3 4 9.6 8.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.3 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-7.9l-6.6 4.8C9.7 39.7 16.4 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.2 5.2C41.4 35.8 44 30.3 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+          Se connecter avec Google
+        </button>
       </div>
-      <div id="auth-note">Connexion applicative via Firebase Auth, puis accès Google Calendar pour charger vos données.</div>
+      <div id="auth-note">Accès sécurisé via Google OAuth2 — aucune donnée stockée sur nos serveurs.</div>
     </div>
 
     <!--
@@ -641,8 +634,6 @@
       CLIENT_ID : à remplacer dans la config ci-dessous
       ============================================================
     -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
     'use strict';
@@ -654,17 +645,6 @@
     const CLIENT_ID = '1091567193044-n64qqmbd6pu8l2pkkocab6cnf0nj7qui.apps.googleusercontent.com';
     const SCOPES    = 'https://www.googleapis.com/auth/calendar';
     const API_BASE  = 'https://www.googleapis.com/calendar/v3';
-
-    // Firebase Auth (Email / mot de passe)
-    // ⚠️ Remplacez ces valeurs par la configuration de votre projet Firebase.
-    const firebaseConfig = {
-      apiKey: 'AIzaSyDxwThDOzSuhlutGM2X10csENHXVXikFOs',
-      authDomain: 'agenda-56781.firebaseapp.com',
-      projectId: 'agenda-56781',
-      storageBucket: 'agenda-56781.firebasestorage.app',
-      messagingSenderId: '952610939479',
-      appId: '1:952610939479:web:f3c4da0a1becc0aa0b7912'
-    };
 
     /* ============================================================
        CONSTANTES AFFICHAGE
@@ -699,8 +679,6 @@
        effacé à la fermeture de l'onglet/navigateur)
     ============================================================ */
     let tokenClient = null;
-    let firebaseAuth = null;
-    let googleTokenRequested = false;
     const SS_TOKEN  = 'gcal_access_token';
     const SS_EXPIRY = 'gcal_token_expiry';
 
@@ -720,41 +698,6 @@
       sessionStorage.removeItem(SS_EXPIRY);
     }
 
-    function initFirebaseAuth() {
-      if (!window.firebase) {
-        showToast('SDK Firebase indisponible', 'error');
-        return;
-      }
-      if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.appId) {
-        document.getElementById('auth-error').textContent = 'Configurez firebaseConfig pour activer la connexion.';
-        return;
-      }
-
-      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      firebaseAuth = firebase.auth();
-      firebaseAuth.onAuthStateChanged((user) => {
-        if (!user) {
-          accessToken = null;
-          clearToken();
-          document.getElementById('auth-overlay').classList.add('on');
-          document.getElementById('btn-so').style.display = 'none';
-          return;
-        }
-
-        const saved = loadToken();
-        if (saved) {
-          accessToken = saved;
-          onSignedIn();
-          return;
-        }
-
-        if (tokenClient && !googleTokenRequested) {
-          googleTokenRequested = true;
-          tokenClient.requestAccessToken({ prompt: 'select_account' });
-        }
-      });
-    }
-
     function initGIS() {
       if (!window.google?.accounts?.oauth2) {
         setTimeout(initGIS, 200); return;
@@ -772,12 +715,9 @@
 
       // Restauration silencieuse depuis sessionStorage
       const saved = loadToken();
-      if (saved && firebaseAuth?.currentUser) {
+      if (saved) {
         accessToken = saved;
         onSignedIn();
-      } else if (firebaseAuth?.currentUser && !googleTokenRequested) {
-        googleTokenRequested = true;
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
       }
 
       // Auto-refresh : renouveler silencieusement 2 min avant expiration
@@ -789,35 +729,16 @@
       }, 60000);
     }
 
-    async function doSignIn(evt)  {
-      evt?.preventDefault();
-      const login = document.getElementById('auth-login')?.value?.trim() || '';
-      const password = document.getElementById('auth-password')?.value || '';
-      const err = document.getElementById('auth-error');
-
-      if (!firebaseAuth) {
-        if (err) err.textContent = 'Firebase Auth non configuré.';
-        return false;
-      }
-
-      if (err) err.textContent = '';
-      try {
-        await firebaseAuth.signInWithEmailAndPassword(login, password);
-        if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
-      } catch (e) {
-        const msg = e?.code === 'auth/invalid-credential'
-          ? 'Identifiants invalides.'
-          : (e?.message || 'Erreur de connexion');
-        if (err) err.textContent = msg;
-      }
-      return false;
+    function doSignIn() {
+      if (!tokenClient) { showToast('GIS non initialisé, patientez…', 'warn'); return; }
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
     }
+
     async function doSignOut() {
       if (!confirm('Se déconnecter ?')) return;
       if (accessToken) google.accounts.oauth2.revoke(accessToken);
       accessToken = null;
       clearToken();
-      if (firebaseAuth?.currentUser) await firebaseAuth.signOut();
       calendars = []; events = [];
       document.getElementById('auth-overlay').classList.add('on');
       document.getElementById('btn-so').style.display = 'none';
@@ -1495,7 +1416,6 @@
     ============================================================ */
     document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     document.getElementById('modal').addEventListener('click', e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
-    initFirebaseAuth();
     initGIS();
     initWorldClocks();
 
