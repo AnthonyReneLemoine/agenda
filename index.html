@@ -1344,10 +1344,10 @@
       } else if(info){
         document.getElementById('modal-title').textContent='Nouvel événement';
         if(info.allDay){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ad').checked=true; document.getElementById('m-ts').disabled=true; document.getElementById('m-te').disabled=true; }
-        else if(info.start){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ts').value=fmtT(info.start); document.getElementById('m-te').value=fmtT(info.end||new Date(info.start.getTime()+3600000)); }
+        else if(info.start){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ts').value=fmtT(info.start); document.getElementById('m-te').value=fmtT(info.end||new Date(info.start.getTime()+1800000)); }
       } else {
         document.getElementById('modal-title').textContent='Nouvel événement';
-        const now=new Date(); document.getElementById('m-ds').value=fmtD(now); document.getElementById('m-de').value=fmtD(now); document.getElementById('m-ts').value=fmtT(now); document.getElementById('m-te').value=fmtT(new Date(now.getTime()+3600000));
+        const now=new Date(); document.getElementById('m-ds').value=fmtD(now); document.getElementById('m-de').value=fmtD(now); document.getElementById('m-ts').value=fmtT(now); document.getElementById('m-te').value=fmtT(new Date(now.getTime()+1800000));
       }
       document.getElementById('modal').style.display='block';
       setTimeout(()=>document.getElementById('m-title').focus(),50);
@@ -1362,6 +1362,15 @@
       document.getElementById('btn-del').style.display='none'; document.getElementById('btn-dup').style.display='none';
     }
 
+    function addMinutesToTime(timeValue, minutesToAdd){
+      const [hours, minutes] = String(timeValue || '00:00').split(':').map(Number);
+      const totalMinutes = ((hours * 60) + minutes + minutesToAdd + 1440) % 1440;
+      return `${pz(Math.floor(totalMinutes / 60))}:${pz(totalMinutes % 60)}`;
+    }
+    function syncEndTimeWithStart(){
+      const startTime = document.getElementById('m-ts').value;
+      document.getElementById('m-te').value = addMinutesToTime(startTime, 30);
+    }
     function onAlldayChange(){ const v=document.getElementById('m-ad').checked; document.getElementById('m-ts').disabled=v; document.getElementById('m-te').disabled=v; }
     function onMultidayChange(){ document.getElementById('row-de').style.display=document.getElementById('m-md').checked?'flex':'none'; }
     function onRecChange(){ document.getElementById('row-recend').style.display=document.getElementById('m-rec').value!=='none'?'block':'none'; }
@@ -1410,6 +1419,8 @@
     ============================================================ */
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function populateTimes(sel){ sel.innerHTML=''; for(let h=0;h<24;h++) for(let m=0;m<60;m+=15){ const v=`${pz(h)}:${pz(m)}`; const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); } }
+
+    document.getElementById('m-ts').addEventListener('change', syncEndTimeWithStart);
 
     /* ============================================================
        INIT
