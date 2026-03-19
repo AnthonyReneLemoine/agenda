@@ -1115,7 +1115,7 @@
     }
 
     function placeEvent(col,ev,colIdx=0,totalCols=1){
-      const s=new Date(ev.start), e=ev.end?new Date(ev.end):new Date(s.getTime()+1800000);
+      const s=new Date(ev.start), e=ev.end?new Date(ev.end):new Date(s.getTime()+3600000);
       const sm=Math.max(0,(s.getHours()-H_START)*60+s.getMinutes());
       const em=Math.min((H_END-H_START)*60,(e.getHours()-H_START)*60+e.getMinutes());
       const dur=Math.max(15,em-sm);
@@ -1145,7 +1145,7 @@
       const rect=el.getBoundingClientRect(), dsRect=ds.getBoundingClientRect();
       const offsetY=mde.clientY-rect.top, startX=mde.clientX, startY=mde.clientY;
       let moved=false;
-      const evDurMin=Math.round((new Date(ev.end||new Date(ev.start).getTime()+1800000)-new Date(ev.start))/60000);
+      const evDurMin=Math.round((new Date(ev.end||new Date(ev.start).getTime()+3600000)-new Date(ev.start))/60000);
       ghost.style.width=(DAY_W-4)+'px'; ghost.style.height=minToPx(evDurMin)+'px';
       ghost.style.background=ev.backgroundColor||'#3b82f6'; ghost.style.display='none';
 
@@ -1344,10 +1344,10 @@
       } else if(info){
         document.getElementById('modal-title').textContent='Nouvel événement';
         if(info.allDay){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ad').checked=true; document.getElementById('m-ts').disabled=true; document.getElementById('m-te').disabled=true; }
-        else if(info.start){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ts').value=fmtT(info.start); document.getElementById('m-te').value=fmtT(info.end||new Date(info.start.getTime()+1800000)); }
+        else if(info.start){ document.getElementById('m-ds').value=fmtD(info.start); document.getElementById('m-de').value=fmtD(info.start); document.getElementById('m-ts').value=fmtT(info.start); document.getElementById('m-te').value=fmtT(info.end||new Date(info.start.getTime()+3600000)); }
       } else {
         document.getElementById('modal-title').textContent='Nouvel événement';
-        const now=new Date(); document.getElementById('m-ds').value=fmtD(now); document.getElementById('m-de').value=fmtD(now); document.getElementById('m-ts').value=fmtT(now); document.getElementById('m-te').value=fmtT(new Date(now.getTime()+1800000));
+        const now=new Date(); document.getElementById('m-ds').value=fmtD(now); document.getElementById('m-de').value=fmtD(now); document.getElementById('m-ts').value=fmtT(now); document.getElementById('m-te').value=fmtT(new Date(now.getTime()+3600000));
       }
       document.getElementById('modal').style.display='block';
       setTimeout(()=>document.getElementById('m-title').focus(),50);
@@ -1369,7 +1369,7 @@
     }
     function syncEndTimeWithStart(){
       const startTime = document.getElementById('m-ts').value;
-      document.getElementById('m-te').value = addMinutesToTime(startTime, 30);
+      document.getElementById('m-te').value = addMinutesToTime(startTime, 60);
     }
     function onAlldayChange(){ const v=document.getElementById('m-ad').checked; document.getElementById('m-ts').disabled=v; document.getElementById('m-te').disabled=v; }
     function onMultidayChange(){ document.getElementById('row-de').style.display=document.getElementById('m-md').checked?'flex':'none'; }
