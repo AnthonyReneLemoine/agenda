@@ -103,6 +103,10 @@
         border-right: 1px solid var(--border); cursor: pointer; user-select: none; transition: background .15s;
       }
       .day-head:hover    { background: #f8fafc; }
+      .day-head.week-even { background: #e2e8f0; }
+      .day-head.week-odd  { background: #e0f2fe; }
+      .day-head.week-even:hover { background: #cbd5e1; }
+      .day-head.week-odd:hover  { background: #bae6fd; }
       .day-head.is-today { background: #eff6ff; }
       .day-head .dh-wd   { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
       .day-head .dh-d    { font-size: 19px; font-weight: 700; color: #1e293b; line-height: 1.1; }
@@ -914,6 +918,7 @@
        UTILITAIRES DATES
     ============================================================ */
     function sod(d) { const r=new Date(d); r.setHours(0,0,0,0); return r; }
+    function isoWeek(d){ const t=new Date(d); t.setHours(0,0,0,0); t.setDate(t.getDate()+3-(t.getDay()+6)%7); const w1=new Date(t.getFullYear(),0,4); return 1+Math.round(((t-w1)/86400000-3+(w1.getDay()+6)%7)/7); }
     function addD(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
     function sameD(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
     function isToday(d){ return sameD(d,new Date()); }
@@ -1004,7 +1009,8 @@
       for(let i=0;i<viewDays;i++){
         const d=addD(viewStart,i);
         const c=document.createElement('div');
-        c.className='day-head'+(isToday(d)?' is-today':'');
+        const wk=isoWeek(d); const wkClass=wk%2===0?'week-even':'week-odd';
+        c.className='day-head '+wkClass+(isToday(d)?' is-today':'');
         c.style.width=DAY_W+'px';
         c.innerHTML=`<span class="dh-wd">${DAYS_FR[(d.getDay()+7)%7]}</span><span class="dh-d">${d.getDate()} ${MONTHS_SH[d.getMonth()]}</span>`;
         c.onclick=()=>{ viewStart=sod(d); viewDays=1; document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on')); renderAll(); loadEvents(); };
