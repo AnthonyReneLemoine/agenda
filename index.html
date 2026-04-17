@@ -463,8 +463,8 @@
         <div class="topbar-right">
           <div style="display:flex;gap:2px;">
             <button class="vbtn"    onclick="setView(1,this)">1j</button>
-            <button class="vbtn"    onclick="setView(7,this)">7j</button>
-            <button class="vbtn on" onclick="setView(21,this)">21j</button>
+            <button class="vbtn on" onclick="setView(7,this)">7j</button>
+            <button class="vbtn"    onclick="setView(21,this)">21j</button>
           </div>
           <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;">
             <span id="sdot" class="sdot sd-ok"></span>
@@ -667,7 +667,7 @@
        ÉTAT
     ============================================================ */
     let accessToken = null;
-    let viewDays    = 21;
+    let viewDays    = 7;
     let viewStart   = sod(new Date());
     let calendars   = [];
     let events      = [];
@@ -1448,7 +1448,7 @@
         nav.style.display = 'flex';
         fab.style.display = 'flex';
         // Vue par défaut mobile : 1 jour
-        if (viewDays === 21) {
+        if (viewDays === 7) {
           viewDays = 1;
           viewStart = sod(new Date());
           document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
