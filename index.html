@@ -436,6 +436,48 @@
         .ev { cursor: pointer; }
         .ev-resize { display: none; }
       }
+
+      /* ============================================================
+         VUE LISTE
+      ============================================================ */
+      #list-view { flex: 1; overflow-y: auto; overflow-x: hidden; background: white; }
+      #list-view::-webkit-scrollbar { width: 6px; }
+      #list-view::-webkit-scrollbar-track { background: #f1f5f9; }
+      #list-view::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      .lv-day { display: flex; border-bottom: 1px solid var(--border); }
+      .lv-date {
+        width: 120px; flex-shrink: 0; padding: 14px 12px 14px 16px;
+        border-right: 1px solid var(--border);
+        display: flex; flex-direction: column; align-items: flex-start;
+        background: white;
+      }
+      .lv-date .lv-date-lbl { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+      .lv-date .lv-date-d { font-size: 26px; font-weight: 700; color: #1e293b; line-height: 1; margin-top: 2px; }
+      .lv-date.is-today .lv-date-d { color: #3b82f6; }
+      .lv-events { flex: 1; display: flex; flex-direction: column; }
+      .lv-ev {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 11px 16px; cursor: pointer;
+        border-bottom: 1px solid #f1f5f9; transition: background .12s;
+      }
+      .lv-ev:last-child { border-bottom: none; }
+      .lv-ev:hover { background: #f8fafc; }
+      .lv-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+      .lv-ev-body { flex: 1; min-width: 0; }
+      .lv-ev-title { font-size: 13px; font-weight: 600; color: #1e293b; line-height: 1.3; }
+      .lv-ev-time { font-size: 11px; color: #64748b; margin-top: 2px; }
+      .lv-ev-desc { font-size: 11px; color: #94a3b8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .lv-empty { padding: 48px; text-align: center; color: #94a3b8; font-size: 14px; }
+      .lv-now { display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #fff5f5; border-bottom: 1px solid #fee2e2; }
+      .lv-now-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+      .lv-now-lbl { font-size: 10px; font-weight: 700; color: #ef4444; white-space: nowrap; }
+      .lv-now-line { flex: 1; height: 1px; background: #fca5a5; }
+
+      @media (max-width: 768px) {
+        .lv-date { width: 72px; padding: 10px 8px; }
+        .lv-date .lv-date-d { font-size: 20px; }
+        .lv-ev { padding: 10px 10px; gap: 8px; }
+      }
     </style>
   </head>
   <body>
@@ -465,6 +507,7 @@
             <button class="vbtn"    onclick="setView(1,this)">1j</button>
             <button class="vbtn on" onclick="setView(7,this)">7j</button>
             <button class="vbtn"    onclick="setView(21,this)">21j</button>
+            <button class="vbtn"    onclick="setListView(this)">Liste</button>
           </div>
           <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;">
             <span id="sdot" class="sdot sd-ok"></span>
@@ -531,6 +574,7 @@
               <div id="days-scroll"><div id="days-inner"></div><div id="drag-ghost"></div></div>
             </div>
           </div>
+          <div id="list-view" style="display:none;"></div>
         </div>
       </div>
     </div>
@@ -561,6 +605,10 @@
       <button onclick="setMobileView(7)"  id="mnv-7"  title="7 jours">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/><line x1="14" y1="3" x2="14" y2="21"/></svg>
         7 j
+      </button>
+      <button onclick="setListView(this)" id="mnv-liste" title="Vue liste">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+        Liste
       </button>
       <button onclick="toggleSidebar()" title="Agendas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -676,6 +724,8 @@
     let mcDate      = new Date();
     let debTimer    = null;
     let worldClockTimer = null;
+    let listView    = false;
+    const LIST_RANGE_DAYS = 90;
 
     /* ============================================================
        AUTH — Google Identity Services (token model)
@@ -958,13 +1008,22 @@
     /* ============================================================
        NAVIGATION
     ============================================================ */
-    function nav(dir){ viewStart=addD(viewStart,dir*viewDays); renderAll(); loadEvents(); }
+    function nav(dir){ const step=listView?30:viewDays; viewStart=addD(viewStart,dir*step); renderAll(); loadEvents(); }
     function goToday(){ viewStart=sod(new Date()); renderAll(); loadEvents(); }
     function setView(n, btn){
+      listView=false;
       viewDays=n;
       document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
       btn.classList.add('on');
       if(n===7){ const dow=(viewStart.getDay()+6)%7; viewStart=addD(viewStart,-dow); }
+      renderAll(); loadEvents();
+      if(typeof updateMobileNavActive==='function') updateMobileNavActive();
+    }
+    function setListView(btn){
+      listView=true;
+      document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
+      if(btn && btn.classList.contains('vbtn')) btn.classList.add('on');
+      viewStart=sod(new Date());
       renderAll(); loadEvents();
       if(typeof updateMobileNavActive==='function') updateMobileNavActive();
     }
@@ -1001,7 +1060,19 @@
     /* ============================================================
        RENDU PRINCIPAL
     ============================================================ */
-    function renderAll(){ syncDisplayMetrics(); renderHead(); renderAllday(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar(); }
+    function renderAll(){
+      syncDisplayMetrics();
+      const calHead=document.getElementById('cal-head'), alldayRow=document.getElementById('allday-row');
+      const calBody=document.getElementById('cal-body'), listViewEl=document.getElementById('list-view');
+      if(listView){
+        calHead.style.display='none'; alldayRow.style.display='none'; calBody.style.display='none';
+        listViewEl.style.display='block';
+        renderListView(); return;
+      }
+      calHead.style.display=''; alldayRow.style.display=''; calBody.style.display='';
+      listViewEl.style.display='none';
+      renderHead(); renderAllday(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar();
+    }
 
     function renderHead(){
       const inner=document.getElementById('head-inner');
@@ -1253,7 +1324,7 @@
     /* ============================================================
        RECHERCHE
     ============================================================ */
-    function onSearch(){ clearTimeout(debTimer); debTimer=setTimeout(()=>{ filter=document.getElementById('srch').value.toLowerCase().trim(); renderDays(); renderAllday(); },250); }
+    function onSearch(){ clearTimeout(debTimer); debTimer=setTimeout(()=>{ filter=document.getElementById('srch').value.toLowerCase().trim(); listView?renderListView():(renderDays(),renderAllday()); },250); }
 
     /* ============================================================
        CHARGEMENT DONNÉES
@@ -1271,13 +1342,13 @@
 
     async function loadEvents(){
       const vis=calendars.filter(c=>c.visible).map(c=>c.id);
-      if(!vis.length){ events=[]; renderDays(); renderAllday(); return; }
-      const end=addD(viewStart,viewDays);
+      if(!vis.length){ events=[]; listView?renderListView():(renderDays(),renderAllday()); return; }
+      const end=addD(viewStart, listView?LIST_RANGE_DAYS:viewDays);
       setStatus('syncing','Chargement…');
       try {
         const allEvs = await Promise.all(vis.map(id => gcalGetEvents(id, viewStart.toISOString(), end.toISOString())));
         events = allEvs.flat();
-        renderDays(); renderAllday(); setStatus('ok');
+        listView?renderListView():(renderDays(),renderAllday()); setStatus('ok');
       } catch(e){ setStatus('error', e.message||'Erreur'); }
     }
 
@@ -1421,6 +1492,65 @@
     }
 
     /* ============================================================
+       VUE LISTE
+    ============================================================ */
+    function renderListView(){
+      const wrap=document.getElementById('list-view');
+      wrap.innerHTML='';
+      const now=new Date();
+      const filtered=events
+        .filter(ev=>!filter||ev.title.toLowerCase().includes(filter))
+        .sort((a,b)=>new Date(a.start)-new Date(b.start));
+      if(!filtered.length){
+        wrap.innerHTML='<div class="lv-empty">Aucun événement dans cette période.</div>';
+        return;
+      }
+      /* Grouper par jour */
+      const byDay=new Map();
+      filtered.forEach(ev=>{
+        const d=sod(new Date(ev.start)), key=fmtD(d);
+        if(!byDay.has(key)) byDay.set(key,{date:d,evs:[]});
+        byDay.get(key).evs.push(ev);
+      });
+      const days=[...byDay.values()].sort((a,b)=>a.date-b.date);
+      let nowInserted=false;
+      days.forEach(({date,evs})=>{
+        const todayDay=isToday(date);
+        const sorted=[...evs].sort((a,b)=>{
+          if(a.allDay!==b.allDay) return a.allDay?-1:1;
+          return new Date(a.start)-new Date(b.start);
+        });
+        const dayRow=document.createElement('div'); dayRow.className='lv-day';
+        const dateDiv=document.createElement('div');
+        dateDiv.className='lv-date'+(todayDay?' is-today':'');
+        dateDiv.innerHTML=`<span class="lv-date-lbl">${MONTHS_SH[date.getMonth()].toUpperCase()}, ${DAYS_FR[(date.getDay()+7)%7].toUpperCase()}.</span><span class="lv-date-d">${date.getDate()}</span>`;
+        const eventsDiv=document.createElement('div'); eventsDiv.className='lv-events';
+        sorted.forEach(ev=>{
+          if(!nowInserted&&!ev.allDay&&new Date(ev.start)>=now){
+            nowInserted=true;
+            const nowEl=document.createElement('div'); nowEl.className='lv-now';
+            nowEl.innerHTML='<div class="lv-now-dot"></div><span class="lv-now-lbl">Maintenant</span><div class="lv-now-line"></div>';
+            eventsDiv.appendChild(nowEl);
+          }
+          const s=new Date(ev.start), e=ev.end?new Date(ev.end):null;
+          const timeStr=ev.allDay?'Jour entier':`De ${fmtTd(s)} à ${fmtTd(e||s)}`;
+          const evDiv=document.createElement('div'); evDiv.className='lv-ev';
+          evDiv.innerHTML=`<div class="lv-dot" style="background:${ev.backgroundColor||'#64748b'};"></div><div class="lv-ev-body"><div class="lv-ev-title">${esc(ev.title)}</div><div class="lv-ev-time">${timeStr}</div>${ev.description?`<div class="lv-ev-desc">${esc(ev.description.substring(0,80))}</div>`:''}</div>`;
+          evDiv.addEventListener('click',()=>openModal(null,true,ev));
+          eventsDiv.appendChild(evDiv);
+        });
+        if(todayDay&&!nowInserted){
+          nowInserted=true;
+          const nowEl=document.createElement('div'); nowEl.className='lv-now';
+          nowEl.innerHTML='<div class="lv-now-dot"></div><span class="lv-now-lbl">Maintenant</span><div class="lv-now-line"></div>';
+          eventsDiv.appendChild(nowEl);
+        }
+        dayRow.appendChild(dateDiv); dayRow.appendChild(eventsDiv);
+        wrap.appendChild(dayRow);
+      });
+    }
+
+    /* ============================================================
        UTILITAIRES
     ============================================================ */
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1461,6 +1591,7 @@
     }
 
     function setMobileView(n) {
+      listView=false;
       viewDays = n;
       document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
       if(n===7){ const dow=(viewStart.getDay()+6)%7; viewStart=addD(viewStart,-dow); }
@@ -1472,8 +1603,10 @@
       ['mnv-1','mnv-7'].forEach(id=>{
         const el=document.getElementById(id); if(!el) return;
         const n=parseInt(id.split('-')[1]);
-        el.classList.toggle('active', viewDays===n);
+        el.classList.toggle('active', !listView&&viewDays===n);
       });
+      const listeEl=document.getElementById('mnv-liste');
+      if(listeEl) listeEl.classList.toggle('active',listView);
     }
 
     function closeSidebarMobile() {
