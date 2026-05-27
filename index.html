@@ -718,7 +718,7 @@
     ============================================================ */
     let accessToken = null;
     let viewDays    = 7;
-    let viewStart   = sod(new Date());
+    let viewStart   = addD(sod(new Date()), -((new Date().getDay()+6)%7));
     let calendars   = [];
     let events      = [];
     let filter      = '';
@@ -1011,7 +1011,7 @@
        NAVIGATION
     ============================================================ */
     function nav(dir){ const step=listView?30:viewDays; viewStart=addD(viewStart,dir*step); renderAll(); loadEvents(); }
-    function goToday(){ viewStart=sod(new Date()); renderAll(); loadEvents(); }
+    function goToday(){ const t=sod(new Date()); viewStart=(viewDays===7)?addD(t,-((t.getDay()+6)%7)):t; renderAll(); loadEvents(); }
     function setView(n, btn){
       listView=false;
       viewDays=n;
