@@ -445,6 +445,8 @@
       #list-view::-webkit-scrollbar-track { background: #f1f5f9; }
       #list-view::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
       .lv-day { display: flex; border-bottom: 1px solid var(--border); }
+      .lv-day.lv-week-odd { background: #eef0f3; }
+      .lv-day.lv-week-odd .lv-date { background: #eef0f3; }
       .lv-date {
         width: 120px; flex-shrink: 0; padding: 14px 12px 14px 16px;
         border-right: 1px solid var(--border);
@@ -1520,10 +1522,11 @@
           if(a.allDay!==b.allDay) return a.allDay?-1:1;
           return new Date(a.start)-new Date(b.start);
         });
-        const dayRow=document.createElement('div'); dayRow.className='lv-day';
+        const wk=isoWeek(date);
+        const dayRow=document.createElement('div'); dayRow.className='lv-day'+(wk%2!==0?' lv-week-odd':'');
         const dateDiv=document.createElement('div');
         dateDiv.className='lv-date'+(todayDay?' is-today':'');
-        dateDiv.innerHTML=`<span class="lv-date-lbl">${MONTHS_SH[date.getMonth()].toUpperCase()}, ${DAYS_FR[(date.getDay()+7)%7].toUpperCase()}.</span><span class="lv-date-d">${date.getDate()}</span>`;
+        dateDiv.innerHTML=`<span class="lv-date-lbl">${DAYS_FR[(date.getDay()+7)%7].toUpperCase()}., ${MONTHS_SH[date.getMonth()].toUpperCase()}</span><span class="lv-date-d">${date.getDate()}</span>`;
         const eventsDiv=document.createElement('div'); eventsDiv.className='lv-events';
         sorted.forEach(ev=>{
           if(!nowInserted&&!ev.allDay&&new Date(ev.start)>=now){
