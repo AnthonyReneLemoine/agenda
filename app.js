@@ -209,7 +209,13 @@
       const cal  = calendars.find(c => c.id === calId);
       const color = cal?.color || '#3b82f6';
       return (data.items || []).map(e => {
-        const allDay = !e.start.dateTime;
+        const apiAllDay = !e.start.dateTime;
+        const start = apiAllDay ? e.start.date + 'T00:00:00' : e.start.dateTime;
+        const end   = apiAllDay ? e.end.date   + 'T00:00:00' : e.end.dateTime;
+        // Certains événements importés sont enregistrés par Google avec des
+        // dateTime de minuit à minuit, bien que son interface les place dans
+        // la zone « journée entière ». On reproduit ce comportement.
+        const allDay = apiAllDay || isMidnightSpanningEvent(start,end);
         const descriptionRaw = e.description || '';
         return {
           id:              e.id,
@@ -219,9 +225,10 @@
           descriptionRaw,
           // Les dates d'un événement « toute la journée » sont des dates locales.
           // Ne pas ajouter Z : cela les convertirait en UTC et peut décaler le jour.
-          start:           allDay ? e.start.date + 'T00:00:00' : e.start.dateTime,
-          end:             allDay ? e.end.date   + 'T00:00:00' : e.end.dateTime,
+          start,
+          end,
           allDay,
+          apiAllDay,
           backgroundColor: color,
           borderColor:     color,
           textColor:       '#ffffff'
@@ -316,6 +323,17 @@
     }
     function parseLocalDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
     function combineDateAndTime(date, ts){ const [h,m]=ts.split(':').map(Number); const r=new Date(date); r.setHours(h,m,0,0); return r; }
+
+    function isMidnightSpanningEvent(startValue,endValue){
+      const start=new Date(startValue), end=new Date(endValue);
+      if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())) return false;
+      const startsAtMidnight=start.getHours()===0&&start.getMinutes()===0&&start.getSeconds()===0;
+      const endsAtMidnight=end.getHours()===0&&end.getMinutes()===0&&end.getSeconds()===0;
+      if(!startsAtMidnight||!endsAtMidnight) return false;
+      const followingDay=new Date(start);
+      followingDay.setDate(followingDay.getDate()+1);
+      return end>=followingDay;
+    }
 
     function plainTextDescription(value){
       const source=String(value||'');
