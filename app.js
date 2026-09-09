@@ -35,6 +35,8 @@
     let debTimer    = null;
     let worldClockTimer = null;
     let listView    = false;
+    let editingDescriptionRaw = '';
+    let editingDescriptionPlain = '';
     const LIST_RANGE_DAYS = 90;
 
     /* ============================================================
@@ -208,13 +210,17 @@
       const color = cal?.color || '#3b82f6';
       return (data.items || []).map(e => {
         const allDay = !e.start.dateTime;
+        const descriptionRaw = e.description || '';
         return {
           id:              e.id,
           calendarId:      calId,
           title:           e.summary || '(sans titre)',
-          description:     e.description || '',
-          start:           allDay ? e.start.date + 'T00:00:00.000Z' : e.start.dateTime,
-          end:             allDay ? e.end.date   + 'T00:00:00.000Z' : e.end.dateTime,
+          description:     plainTextDescription(descriptionRaw),
+          descriptionRaw,
+          // Les dates d'un événement « toute la journée » sont des dates locales.
+          // Ne pas ajouter Z : cela les convertirait en UTC et peut décaler le jour.
+          start:           allDay ? e.start.date + 'T00:00:00' : e.start.dateTime,
+          end:             allDay ? e.end.date   + 'T00:00:00' : e.end.dateTime,
           allDay,
           backgroundColor: color,
           borderColor:     color,
@@ -261,8 +267,10 @@
       const startDate = parseLocalDate(data.startDate);
       const endDate   = parseLocalDate(data.endDate);
       if (data.allDay) {
-        const daysDiff  = Math.round((endDate - startDate) / 86400000);
-        const endExcl   = new Date(startDate); endExcl.setDate(endExcl.getDate() + daysDiff + 1);
+        // Google Calendar attend une date de fin exclusive pour les événements
+        // « toute la journée ». Dans l'interface, la date de fin reste inclusive.
+        const endExcl = new Date(endDate);
+        endExcl.setDate(endExcl.getDate() + 1);
         body.start = { date: fmtD(startDate) };
         body.end   = { date: fmtD(endExcl) };
       } else {
@@ -308,6 +316,25 @@
     }
     function parseLocalDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
     function combineDateAndTime(date, ts){ const [h,m]=ts.split(':').map(Number); const r=new Date(date); r.setHours(h,m,0,0); return r; }
+
+    function plainTextDescription(value){
+      const source=String(value||'');
+      if(!/<[a-z][\s\S]*>/i.test(source)) return source;
+      const withBreaks=source
+        .replace(/<br\s*\/?>/gi,'\n')
+        .replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi,'\n');
+      const doc=new DOMParser().parseFromString(withBreaks,'text/html');
+      return (doc.body.textContent||'')
+        .replace(/\u00a0/g,' ')
+        .replace(/[ \t]+\n/g,'\n')
+        .replace(/\n{3,}/g,'\n\n')
+        .trim();
+    }
+
+    function modalDescriptionForSave(){
+      const value=document.getElementById('m-desc').value;
+      return value===editingDescriptionPlain ? editingDescriptionRaw : value;
+    }
 
     function updateWorldClocks(){
       const now = new Date();
@@ -737,8 +764,10 @@
       resetModal();
       if(ev){
         const s=new Date(ev.start),e=ev.end?new Date(ev.end):null;
+        editingDescriptionRaw=ev.descriptionRaw ?? ev.description ?? '';
+        editingDescriptionPlain=plainTextDescription(editingDescriptionRaw);
         document.getElementById('m-title').value=ev.title||'';
-        document.getElementById('m-desc').value=ev.description||'';
+        document.getElementById('m-desc').value=editingDescriptionPlain;
         document.getElementById('m-id').value=ev.id||'';
         document.getElementById('m-old-cal').value=ev.calendarId||'';
         document.getElementById('m-ds').value=fmtD(s);
@@ -746,7 +775,7 @@
         if(ev.allDay){
           document.getElementById('m-ad').checked=true;
           document.getElementById('m-ts').disabled=true; document.getElementById('m-te').disabled=true;
-          if(e){ const ae=new Date(e.getTime()-86400000); if(fmtD(ae)!==fmtD(s)){ document.getElementById('m-de').value=fmtD(ae); document.getElementById('m-md').checked=true; document.getElementById('row-de').style.display='flex'; } }
+          if(e){ const ae=new Date(e); ae.setDate(ae.getDate()-1); if(fmtD(ae)!==fmtD(s)){ document.getElementById('m-de').value=fmtD(ae); document.getElementById('m-md').checked=true; document.getElementById('row-de').style.display='flex'; } }
         } else {
           document.getElementById('m-ts').value=fmtT(s);
           if(e){ document.getElementById('m-te').value=fmtT(e); if(fmtD(s)!==fmtD(e)){ document.getElementById('m-de').value=fmtD(e); document.getElementById('m-md').checked=true; document.getElementById('row-de').style.display='flex'; } }
@@ -771,6 +800,7 @@
     function resetModal(){
       ['m-title','m-desc','m-id','m-old-cal'].forEach(id=>{ document.getElementById(id).value=''; });
       document.getElementById('m-ad').checked=false; document.getElementById('m-md').checked=false;
+      editingDescriptionRaw=''; editingDescriptionPlain='';
       document.getElementById('row-de').style.display='none'; document.getElementById('m-ts').disabled=false; document.getElementById('m-te').disabled=false;
       document.getElementById('m-rec').value='none'; document.getElementById('row-recend').style.display='none';
       document.getElementById('btn-del').style.display='none'; document.getElementById('btn-dup').style.display='none';
@@ -795,7 +825,8 @@
       const evId=document.getElementById('m-id').value, oldCal=document.getElementById('m-old-cal').value, calId=document.getElementById('m-cal').value;
       const allDay=document.getElementById('m-ad').checked, multi=document.getElementById('m-md').checked;
       const ds=document.getElementById('m-ds').value, de=multi?document.getElementById('m-de').value:ds;
-      const data={ title, description:document.getElementById('m-desc').value, startDate:ds, endDate:de, startTime:document.getElementById('m-ts').value, endTime:document.getElementById('m-te').value, allDay, recurrence:document.getElementById('m-rec').value, recurrenceEnd:document.getElementById('m-rend').value };
+      if(!ds||!de||parseLocalDate(de)<parseLocalDate(ds)){ showToast('La date de fin doit être égale ou postérieure à la date de début','error'); return; }
+      const data={ title, description:modalDescriptionForSave(), startDate:ds, endDate:de, startTime:document.getElementById('m-ts').value, endTime:document.getElementById('m-te').value, allDay, recurrence:document.getElementById('m-rec').value, recurrenceEnd:document.getElementById('m-rend').value };
       const body=buildGCalBody(data);
       setStatus('syncing','Enregistrement…');
       try {
@@ -822,7 +853,8 @@
     async function duplicateCurrent(){
       const calId=document.getElementById('m-cal').value, allDay=document.getElementById('m-ad').checked, multi=document.getElementById('m-md').checked;
       const ds=document.getElementById('m-ds').value, de=multi?document.getElementById('m-de').value:ds;
-      const data={ title:document.getElementById('m-title').value.trim()+' (copie)', description:document.getElementById('m-desc').value, startDate:ds, endDate:de, startTime:document.getElementById('m-ts').value, endTime:document.getElementById('m-te').value, allDay, recurrence:'none', recurrenceEnd:'' };
+      if(!ds||!de||parseLocalDate(de)<parseLocalDate(ds)){ showToast('La date de fin doit être égale ou postérieure à la date de début','error'); return; }
+      const data={ title:document.getElementById('m-title').value.trim()+' (copie)', description:modalDescriptionForSave(), startDate:ds, endDate:de, startTime:document.getElementById('m-ts').value, endTime:document.getElementById('m-te').value, allDay, recurrence:'none', recurrenceEnd:'' };
       setStatus('syncing','Duplication…');
       try { await gcalCreateEvent(calId,buildGCalBody(data)); showToast('Événement dupliqué','success'); closeModal(); await loadEvents(); setStatus('ok'); }
       catch(e){ showToast('Erreur : '+(e.message||e),'error'); setStatus('error'); }
