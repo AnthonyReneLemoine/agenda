@@ -38,6 +38,11 @@
     let editingDescriptionRaw = '';
     let editingDescriptionPlain = '';
     const LIST_RANGE_DAYS = 90;
+    const EVENT_CACHE_TTL = 2 * 60 * 1000;
+    const EVENT_PREFETCH_BEFORE_DAYS = 14;
+    const EVENT_PREFETCH_AFTER_DAYS = 28;
+    const eventRangeCache = new Map();
+    let eventLoadSequence = 0;
 
     /* ============================================================
        AUTH — Google Identity Services (token model)
@@ -114,6 +119,8 @@
       accessToken = null;
       clearToken();
       calendars = []; events = [];
+      eventRangeCache.clear();
+      eventLoadSequence++;
       document.getElementById('auth-overlay').classList.add('on');
       document.getElementById('btn-so').style.display = 'none';
     }
@@ -633,7 +640,7 @@
         gcalUpdateEvent(ev.calendarId, ev.id, {
           start:{ dateTime:newStart.toISOString(), timeZone:tz },
           end:  { dateTime:newEnd.toISOString(),   timeZone:tz }
-        }).then(()=>setStatus('ok')).catch(err=>{ setStatus('error',err.message); loadEvents(); });
+        }).then(()=>{ eventRangeCache.delete(ev.calendarId); setStatus('ok'); }).catch(err=>{ setStatus('error',err.message); loadEvents({force:true}); });
       }
       document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
     }
@@ -670,7 +677,7 @@
         gcalUpdateEvent(ev.calendarId, ev.id, {
           start:{ dateTime:evStart.toISOString(), timeZone:tz },
           end:  { dateTime:newEnd.toISOString(),   timeZone:tz }
-        }).then(()=>setStatus('ok')).catch(err=>{ setStatus('error',err.message); loadEvents(); });
+        }).then(()=>{ eventRangeCache.delete(ev.calendarId); setStatus('ok'); }).catch(err=>{ setStatus('error',err.message); loadEvents({force:true}); });
       }
       document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
     }
@@ -722,16 +729,54 @@
       } catch(e){ setStatus('error', e.message||'Erreur'); }
     }
 
-    async function loadEvents(){
+    function cacheCovers(entry,startMs,endMs){
+      return entry&&Date.now()-entry.fetchedAt<EVENT_CACHE_TTL&&entry.startMs<=startMs&&entry.endMs>=endMs;
+    }
+
+    function renderLoadedEvents(visibleCalendarIds){
+      events=visibleCalendarIds.flatMap(id=>eventRangeCache.get(id)?.items||[]);
+      listView?renderListView():(renderDays(),renderAllday());
+    }
+
+    async function loadEvents({force=false}={}){
+      const requestId=++eventLoadSequence;
       const vis=calendars.filter(c=>c.visible).map(c=>c.id);
-      if(!vis.length){ events=[]; listView?renderListView():(renderDays(),renderAllday()); return; }
-      const end=addD(viewStart, listView?LIST_RANGE_DAYS:viewDays);
+      if(!vis.length){ events=[]; listView?renderListView():(renderDays(),renderAllday()); setStatus('ok'); return; }
+      const rangeStart=new Date(viewStart);
+      const rangeEnd=addD(rangeStart,listView?LIST_RANGE_DAYS:viewDays);
+      const startMs=rangeStart.getTime(), endMs=rangeEnd.getTime();
+      const missing=vis.filter(id=>force||!cacheCovers(eventRangeCache.get(id),startMs,endMs));
+
+      // Une semaine déjà préchargée s'affiche immédiatement, sans voile blanc.
+      if(!missing.length){
+        renderLoadedEvents(vis);
+        setStatus('ok');
+        return;
+      }
+
+      const fetchStart=listView?rangeStart:addD(rangeStart,-EVENT_PREFETCH_BEFORE_DAYS);
+      const fetchEnd=listView?rangeEnd:addD(rangeEnd,EVENT_PREFETCH_AFTER_DAYS);
+      const loadStartedAt=Date.now();
       setStatus('syncing','Chargement…');
       try {
-        const allEvs = await Promise.all(vis.map(id => gcalGetEvents(id, viewStart.toISOString(), end.toISOString())));
-        events = allEvs.flat();
-        listView?renderListView():(renderDays(),renderAllday()); setStatus('ok');
-      } catch(e){ setStatus('error', e.message||'Erreur'); }
+        const loaded=await Promise.all(missing.map(async id=>({
+          id,
+          items:await gcalGetEvents(id,fetchStart.toISOString(),fetchEnd.toISOString())
+        })));
+        loaded.forEach(({id,items})=>{
+          const current=eventRangeCache.get(id);
+          if(!current||current.fetchedAt<=loadStartedAt){
+            eventRangeCache.set(id,{
+              startMs:fetchStart.getTime(),endMs:fetchEnd.getTime(),fetchedAt:loadStartedAt,items
+            });
+          }
+        });
+        // Si l'utilisateur a déjà changé de semaine, cette réponse reste utile
+        // au cache mais ne doit pas écraser la nouvelle vue.
+        if(requestId!==eventLoadSequence) return;
+        renderLoadedEvents(vis);
+        setStatus('ok');
+      } catch(e){ if(requestId===eventLoadSequence) setStatus('error', e.message||'Erreur'); }
     }
 
     /* ============================================================
@@ -856,7 +901,7 @@
           await gcalCreateEvent(calId,body);
           showToast('Événement créé','success');
         }
-        closeModal(); await loadEvents(); setStatus('ok');
+        closeModal(); await loadEvents({force:true}); setStatus('ok');
       } catch(e){ showToast('Erreur : '+(e.message||e),'error'); setStatus('error'); }
     }
 
@@ -864,7 +909,7 @@
       if(!confirm('Supprimer cet événement ?')) return;
       const id=document.getElementById('m-id').value, calId=document.getElementById('m-cal').value;
       setStatus('syncing','Suppression…');
-      try { await gcalDeleteEvent(calId,id); showToast('Événement supprimé','success'); closeModal(); await loadEvents(); setStatus('ok'); }
+      try { await gcalDeleteEvent(calId,id); showToast('Événement supprimé','success'); closeModal(); await loadEvents({force:true}); setStatus('ok'); }
       catch(e){ showToast('Erreur : '+(e.message||e),'error'); setStatus('error'); }
     }
 
@@ -874,7 +919,7 @@
       if(!ds||!de||parseLocalDate(de)<parseLocalDate(ds)){ showToast('La date de fin doit être égale ou postérieure à la date de début','error'); return; }
       const data={ title:document.getElementById('m-title').value.trim()+' (copie)', description:modalDescriptionForSave(), startDate:ds, endDate:de, startTime:document.getElementById('m-ts').value, endTime:document.getElementById('m-te').value, allDay, recurrence:'none', recurrenceEnd:'' };
       setStatus('syncing','Duplication…');
-      try { await gcalCreateEvent(calId,buildGCalBody(data)); showToast('Événement dupliqué','success'); closeModal(); await loadEvents(); setStatus('ok'); }
+      try { await gcalCreateEvent(calId,buildGCalBody(data)); showToast('Événement dupliqué','success'); closeModal(); await loadEvents({force:true}); setStatus('ok'); }
       catch(e){ showToast('Erreur : '+(e.message||e),'error'); setStatus('error'); }
     }
 
