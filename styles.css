@@ -111,7 +111,10 @@
       #allday-inner  { display: flex; }
       .allday-cell { width: var(--day-w); flex-shrink: 0; border-right: 1px solid var(--border); padding: 2px 3px; display: flex; flex-direction: column; gap: 1px; min-height: var(--allday-h); }
       .allday-ev { border-radius: 3px; padding: 1px 5px; font-size: 11px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-      .allday-ev.is-past { background: #94a3b8 !important; }
+      /* Comme Google Agenda : la couleur du calendrier reste reconnaissable,
+         mais les rendez-vous terminés passent visuellement au second plan. */
+      .allday-ev.is-past { opacity: .45; filter: saturate(.55); }
+      .allday-ev.is-past:hover { opacity: .68; filter: saturate(.75); }
 
       /* Corps */
       #cal-body { display: flex; flex: 1; overflow: hidden; }
@@ -174,7 +177,8 @@
         box-shadow: 0 1px 3px rgba(0,0,0,.15);
         transition: filter .15s, box-shadow .15s; user-select: none;
       }
-      .ev.is-past { background: #94a3b8 !important; }
+      .ev.is-past { opacity: .45; filter: saturate(.55); box-shadow: none; }
+      .ev.is-past:hover { opacity: .68; filter: saturate(.75) brightness(1.03); }
       .ev:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(0,0,0,.22); z-index: 100!important; }
       .ev.dragging { opacity: .55; cursor: grabbing; z-index: 10; transition: none; }
       .ev.resizing { cursor: ns-resize; z-index: 10; transition: none; }
@@ -458,10 +462,8 @@
       }
       .lv-ev:last-child { border-bottom: none; }
       .lv-ev:hover { background: #f8fafc; }
-      .lv-ev.is-past .lv-dot { background: #94a3b8 !important; }
-      .lv-ev.is-past .lv-ev-title,
-      .lv-ev.is-past .lv-ev-time,
-      .lv-ev.is-past .lv-ev-desc { color: #94a3b8; }
+      .lv-ev.is-past { opacity: .5; }
+      .lv-ev.is-past:hover { opacity: .72; }
       .lv-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
       .lv-ev-body { flex: 1; min-width: 0; }
       .lv-ev-title { font-size: 13px; font-weight: 600; color: #1e293b; line-height: 1.3; }
