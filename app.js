@@ -314,6 +314,10 @@
     function addD(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
     function sameD(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
     function isToday(d){ return sameD(d,new Date()); }
+    function eventHasEnded(ev,now=new Date()){
+      const end=new Date(ev.end||ev.start);
+      return !Number.isNaN(end.getTime())&&end<=now;
+    }
     function pz(n){ return String(n).padStart(2,'0'); }
     function fmtD(d){ return `${d.getFullYear()}-${pz(d.getMonth()+1)}-${pz(d.getDate())}`; }
     function fmtT(d){ const tot=Math.round((d.getHours()*60+d.getMinutes())/15)*15; return `${pz(Math.floor(tot/60)%24)}:${pz(tot%60)}`; }
@@ -476,7 +480,7 @@
           return d>=sod(s)&&d<sod(e);
         }).forEach(ev=>{
           const chip=document.createElement('div');
-          chip.className='allday-ev'; chip.style.background=ev.backgroundColor||'#64748b';
+          chip.className='allday-ev'+(eventHasEnded(ev)?' is-past':''); chip.style.background=ev.backgroundColor||'#64748b';
           chip.textContent=ev.title;
           chip.onclick=e2=>{e2.stopPropagation();openModal(null,true,ev);};
           cell.appendChild(chip);
@@ -586,7 +590,7 @@
       const em=Math.min((H_END-H_START)*60,(e.getHours()-H_START)*60+e.getMinutes());
       const dur=Math.max(15,em-sm);
       const geometry=overlappingGeometry(colIdx,totalCols);
-      const el=document.createElement('div'); el.className='ev';
+      const el=document.createElement('div'); el.className='ev'+(eventHasEnded(ev)?' is-past':'');
       el.style.top=minToPx(sm)+'px'; el.style.height=Math.max(22,minToPx(dur))+'px';
       el.style.background=ev.backgroundColor||'#3b82f6'; el.style.left=geometry.left+'px'; el.style.right='auto'; el.style.width=geometry.width+'px'; el.style.zIndex=String(geometry.zIndex);
       el.dataset.evId=ev.id||''; el.dataset.calId=ev.calendarId||'';
@@ -967,7 +971,7 @@
           }
           const s=new Date(ev.start), e=ev.end?new Date(ev.end):null;
           const timeStr=ev.allDay?'Jour entier':`De ${fmtTd(s)} à ${fmtTd(e||s)}`;
-          const evDiv=document.createElement('div'); evDiv.className='lv-ev';
+          const evDiv=document.createElement('div'); evDiv.className='lv-ev'+(eventHasEnded(ev,now)?' is-past':'');
           evDiv.innerHTML=`<div class="lv-dot" style="background:${ev.backgroundColor||'#64748b'};"></div><div class="lv-ev-body"><div class="lv-ev-title">${esc(ev.title)}</div><div class="lv-ev-time">${timeStr}</div>${ev.description?`<div class="lv-ev-desc">${esc(ev.description.substring(0,80))}</div>`:''}</div>`;
           evDiv.addEventListener('click',()=>openModal(null,true,ev));
           eventsDiv.appendChild(evDiv);
