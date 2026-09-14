@@ -46,28 +46,49 @@
 
     /* ============================================================
        AUTH — Google Identity Services (token model)
-       Persistance : sessionStorage (survit aux rechargements,
-       effacé à la fermeture de l'onglet/navigateur)
+       Persistance : localStorage jusqu'à l'expiration réelle du jeton.
+       L'autorisation déjà accordée est mémorisée séparément afin de
+       renouveler le jeton sans redemander systématiquement le compte.
     ============================================================ */
     let tokenClient = null;
-    const SS_TOKEN  = 'gcal_access_token';
-    const SS_EXPIRY = 'gcal_token_expiry';
+    const LS_TOKEN  = 'gcal_access_token';
+    const LS_EXPIRY = 'gcal_token_expiry';
+    const LS_GRANT  = 'gcal_oauth_grant';
     const AUTH_NOTE_DEFAULT = 'Accès sécurisé via Google OAuth2 — aucune donnée stockée sur nos serveurs.';
 
     function saveToken(token, expiresIn) {
       const expiry = Date.now() + (expiresIn - 60) * 1000;
-      sessionStorage.setItem(SS_TOKEN,  token);
-      sessionStorage.setItem(SS_EXPIRY, String(expiry));
+      localStorage.setItem(LS_TOKEN,  token);
+      localStorage.setItem(LS_EXPIRY, String(expiry));
+      // Nettoyage des anciennes versions qui utilisaient sessionStorage.
+      sessionStorage.removeItem(LS_TOKEN);
+      sessionStorage.removeItem(LS_EXPIRY);
     }
     function loadToken() {
-      const token  = sessionStorage.getItem(SS_TOKEN);
-      const expiry = parseInt(sessionStorage.getItem(SS_EXPIRY) || '0', 10);
+      let token  = localStorage.getItem(LS_TOKEN);
+      let expiry = parseInt(localStorage.getItem(LS_EXPIRY) || '0', 10);
+
+      // Migration transparente d'une session ouverte avec l'ancienne version.
+      if (!token || !Number.isFinite(expiry) || Date.now() >= expiry) {
+        const sessionToken  = sessionStorage.getItem(LS_TOKEN);
+        const sessionExpiry = parseInt(sessionStorage.getItem(LS_EXPIRY) || '0', 10);
+        if (sessionToken && Date.now() < sessionExpiry) {
+          token = sessionToken;
+          expiry = sessionExpiry;
+          localStorage.setItem(LS_TOKEN, token);
+          localStorage.setItem(LS_EXPIRY, String(expiry));
+          sessionStorage.removeItem(LS_TOKEN);
+          sessionStorage.removeItem(LS_EXPIRY);
+        }
+      }
       if (token && Date.now() < expiry) return token;
       clearToken(); return null;
     }
     function clearToken() {
-      sessionStorage.removeItem(SS_TOKEN);
-      sessionStorage.removeItem(SS_EXPIRY);
+      localStorage.removeItem(LS_TOKEN);
+      localStorage.removeItem(LS_EXPIRY);
+      sessionStorage.removeItem(LS_TOKEN);
+      sessionStorage.removeItem(LS_EXPIRY);
     }
 
     function requireReconnection(message = 'Votre session Google a expiré. Cliquez sur « Se connecter avec Google » pour continuer.') {
@@ -88,14 +109,23 @@
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (resp) => {
-          if (resp.error) { showToast('Erreur auth : ' + resp.error, 'error'); return; }
+          if (resp.error) {
+            // Si Google ne peut plus réutiliser l'autorisation, le prochain clic
+            // réaffichera le choix du compte au lieu de boucler sur l'erreur.
+            localStorage.removeItem(LS_GRANT);
+            const message = 'Autorisation Google à renouveler. Cliquez de nouveau sur « Se connecter avec Google ».';
+            document.getElementById('auth-note').textContent = message;
+            showToast(message, 'warning', 6000);
+            return;
+          }
           accessToken = resp.access_token;
           saveToken(resp.access_token, resp.expires_in || 3600);
+          localStorage.setItem(LS_GRANT, '1');
           onSignedIn();
         }
       });
 
-      // Restauration silencieuse depuis sessionStorage
+      // Restauration silencieuse tant que le jeton Google est encore valide.
       const saved = loadToken();
       if (saved) {
         accessToken = saved;
@@ -110,7 +140,8 @@
     function doSignIn() {
       if (!tokenClient) { showToast('GIS non initialisé, patientez…', 'warn'); return; }
       document.getElementById('auth-note').textContent = AUTH_NOTE_DEFAULT;
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
+      const prompt = localStorage.getItem(LS_GRANT) === '1' ? '' : 'select_account';
+      tokenClient.requestAccessToken({ prompt });
     }
 
     async function doSignOut() {
@@ -118,6 +149,7 @@
       if (accessToken) google.accounts.oauth2.revoke(accessToken);
       accessToken = null;
       clearToken();
+      localStorage.removeItem(LS_GRANT);
       calendars = []; events = [];
       eventRangeCache.clear();
       eventLoadSequence++;
@@ -1083,4 +1115,3 @@
     // Init au chargement et au resize
     window.addEventListener('resize', initResponsive);
     // initResponsive() est appelé dans onSignedIn() après le login
-
