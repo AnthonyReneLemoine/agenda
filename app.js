@@ -285,9 +285,20 @@
 
     /* Met à jour un événement */
     async function gcalUpdateEvent(calId, evId, body) {
+      // PATCH fusionne les champs imbriqués : il faut effacer explicitement
+      // l'autre représentation lors d'une conversion date <-> dateTime.
+      const patch = { ...body };
+      for (const key of ['start', 'end']) {
+        const value = body[key];
+        if (value?.date) {
+          patch[key] = { ...value, dateTime: null, timeZone: null };
+        } else if (value?.dateTime) {
+          patch[key] = { ...value, date: null };
+        }
+      }
       return gcalFetch(
         `${API_BASE}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(evId)}`,
-        { method: 'PATCH', body: JSON.stringify(body) }
+        { method: 'PATCH', body: JSON.stringify(patch) }
       );
     }
 
