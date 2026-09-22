@@ -10,6 +10,7 @@ const element = id => {
   return elements.get(id);
 };
 const context = vm.createContext({console, Date, Intl, URLSearchParams, setTimeout(){}, setInterval(){},
+  ResizeObserver:class { observe(){} }, requestAnimationFrame(){},
   document:{getElementById:element, addEventListener(){}}, window:{addEventListener(){}}});
 vm.runInContext(source, context);
 const run = code => vm.runInContext(code, context);

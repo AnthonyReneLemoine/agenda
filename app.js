@@ -375,6 +375,23 @@
       if(!Number.isNaN(slot) && slot>0) SLOT_H=slot;
       if(!Number.isNaN(day) && day>0) DAY_W=day;
     }
+    // Mesure l'espace réel restant, barre de défilement horizontale comprise.
+    function fitCalendarHeight(){
+      const available=document.getElementById('body-scroll').clientHeight;
+      if(listView || available<=0) return;
+      SLOT_H=Math.max(1,(available-1)/((H_END-H_START)*2));
+      document.documentElement.style.setProperty('--slot-h',SLOT_H+'px');
+    }
+
+    let calendarResizeFrame=0;
+    function scheduleCalendarResize(){
+      if(calendarResizeFrame) return;
+      calendarResizeFrame=requestAnimationFrame(()=>{
+        calendarResizeFrame=0;
+        renderAll();
+      });
+    }
+
     function parseLocalDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
     function combineDateAndTime(date, ts){ const [h,m]=ts.split(':').map(Number); const r=new Date(date); r.setHours(h,m,0,0); return r; }
 
@@ -490,7 +507,7 @@
       }
       calHead.style.display=''; alldayRow.style.display=''; calBody.style.display='';
       listViewEl.style.display='none';
-      renderHead(); renderAllday(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar();
+      renderHead(); renderAllday(); fitCalendarHeight(); renderTimeCol(); renderDays(); bindScroll(); updateNowBar();
     }
 
     function renderHead(){
@@ -634,7 +651,7 @@
       const dur=Math.max(15,em-sm);
       const geometry=overlappingGeometry(colIdx,totalCols);
       const el=document.createElement('div'); el.className='ev'+(eventHasEnded(ev)?' is-past':'');
-      el.style.top=minToPx(sm)+'px'; el.style.height=Math.max(22,minToPx(dur))+'px';
+      el.style.top=minToPx(sm)+'px'; el.style.height=Math.max(0,Math.min(totalH()-minToPx(sm),Math.max(22,minToPx(dur))))+'px';
       el.style.background=ev.backgroundColor||'#3b82f6'; el.style.left=geometry.left+'px'; el.style.right='auto'; el.style.width=geometry.width+'px'; el.style.zIndex=String(geometry.zIndex);
       el.dataset.evId=ev.id||''; el.dataset.calId=ev.calendarId||'';
       const desc=(ev.description||'').substring(0,60);
@@ -737,12 +754,14 @@
     function bindScroll(){
       const bs=document.getElementById('body-scroll');
       bs.onscroll=null;
-      bs.addEventListener('scroll',()=>{
+      bs.onscroll=()=>{
         // Sync horizontal : en-tête jours + all-day suivent body-scroll en X
         document.getElementById('head-scroll').scrollLeft   = bs.scrollLeft;
         document.getElementById('allday-scroll').scrollLeft = bs.scrollLeft;
         // Pas besoin de sync vertical : time-col est dans body-scroll (sticky left)
-      },{passive:true});
+      };
+      document.getElementById('head-scroll').scrollLeft=bs.scrollLeft;
+      document.getElementById('allday-scroll').scrollLeft=bs.scrollLeft;
     }
     function scrollToNow(){
       const now=new Date();
@@ -1124,5 +1143,12 @@
     })();
 
     // Init au chargement et au resize
-    window.addEventListener('resize', initResponsive);
+    window.addEventListener('resize', ()=>{
+      initResponsive();
+      scheduleCalendarResize();
+    });
+    // Recalcule aussi après chargement/filtrage des journées entières,
+    // changement de vue, ouverture du panneau ou changement de zoom.
+    const calendarSizeObserver=new ResizeObserver(scheduleCalendarResize);
+    calendarSizeObserver.observe(document.getElementById('body-scroll'));
     // initResponsive() est appelé dans onSignedIn() après le login
